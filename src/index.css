@@ -1,0 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-100: #f4f4f5;
+  --color-emerald-500: #10b981;
+  --color-emerald-400: #34d399;
+  --color-emerald-600: #059669;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-400: #22d3ee;
+  --color-purple-500: #a855f7;
+  --color-pink-500: #ec4899;
+  --color-rose-500: #f43f5e;
+  --color-amber-500: #f59e0b;
+  --color-red-500: #ef4444;
+}
+
+:root {
+  background-color: #050505; /* Deep void black */
+  color: var(--color-zinc-100);
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.15); }
+  50% { box-shadow: 0 0 35px rgba(16, 185, 129, 0.3); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInFromBottom 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* Uiverse.io Button Animation */
+  @keyframes spin-gradient {
+    0% { --gradient-angle: 0deg; }
+    100% { --gradient-angle: 360deg; }
+  }
+
+  .uiverse-btn-glow {
+    position: relative;
+  }
+  
+  .uiverse-btn-glow::before,
+  .uiverse-btn-glow::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    background: conic-gradient(
+      from var(--gradient-angle),
+      transparent 20%,
+      #3b82f6,
+      #8b5cf6,
+      #ec4899,
+      transparent 80%
+    );
+    border-radius: inherit;
+    animation: spin-gradient 4s linear infinite;
+  }
+  
+  .uiverse-btn-glow::after {
+    filter: blur(15px);
+  }
+
+  /* Uiverse.io Equalizer Loader */
+  @keyframes eq-bar {
+    0%, 100% { transform: scaleY(0.2); }
+    50% { transform: scaleY(1); }
+  }
+
+  .eq-bar {
+    animation: eq-bar 1s ease-in-out infinite;
+    transform-origin: bottom;
+  }
+  
+  .eq-bar:nth-child(1) { animation-delay: 0.0s; }
+  .eq-bar:nth-child(2) { animation-delay: 0.2s; }
+  .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+  .eq-bar:nth-child(4) { animation-delay: 0.1s; }
+  .eq-bar:nth-child(5) { animation-delay: 0.3s; }
+
+  /* Uiverse 3D Hover Card Glare */
+  .glare-effect {
+    background: linear-gradient(
+      105deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.2) 25%,
+      transparent 30%
+    );
+    background-size: 200% 200%;
+    background-position: 150% 0;
+    transition: background-position 0.5s ease;
+  }
+
+  .group:hover .glare-effect {
+    background-position: -50% 0;
+  }
+
+  /* Library Page Premium Animations */
+  @keyframes library-orb-float {
+    0%, 100% { transform: translateY(0) translateX(0); }
+    33% { transform: translateY(-20px) translateX(10px); }
+    66% { transform: translateY(10px) translateX(-15px); }
+  }
+
+  @keyframes library-card-appear {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .library-orb-float {
+    animation: library-orb-float 8s ease-in-out infinite;
+  }
+
+  .library-orb-float-delayed {
+    animation: library-orb-float 10s ease-in-out 2s infinite;
+  }
+
+  .library-card-appear {
+    animation: library-card-appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .rotate-y-2 {
+    --tw-rotate-y: 2deg;
+  }
+
+  .rotate-x-2 {
+    --tw-rotate-x: 2deg;
+  }
+
+  /* ── Genre Marquee Animations ── */
+  @keyframes genre-marquee-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @keyframes genre-marquee-right {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+  }
+
+  .genre-marquee-card {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .genre-marquee-card:hover {
+    transform: translateY(-6px) scale(1.04);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(139, 92, 246, 0.15);
+    z-index: 10;
+  }
+}
+
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Range Input (Slider) */
+input[type=range] {
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  margin-top: -5px;
+  box-shadow: 0 0 0 2px var(--color-zinc-950), 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.15s ease;
+}
+
+input[type=range]:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  /* Background is managed inline via React for gradient progress */
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+/* Glass effect utility */
+.glass {
+  background: rgba(10, 10, 12, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
