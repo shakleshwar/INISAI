@@ -1,4 +1,4 @@
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Shuffle, Repeat, Repeat1, Heart, Music, Mic2, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Shuffle, Repeat, Repeat1, Heart, Music, Mic2, ListMusic, Download } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 import { useState } from 'react';
 import { LyricsView } from '../audio/LyricsView';
@@ -75,18 +75,18 @@ export function BottomPlayer() {
               <Shuffle size={18} />
             </button>
             
-            <button onClick={prev} className="text-zinc-400 hover:text-white transition-colors p-1.5">
+            <button onClick={prev} className="text-zinc-400 hover:text-white transition-colors p-2 active:scale-95">
               <SkipBack size={22} fill="currentColor" />
             </button>
             
             <button 
               onClick={togglePlay} 
-              className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-black hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-black hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95"
             >
               {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
             </button>
             
-            <button onClick={next} className="text-zinc-400 hover:text-white transition-colors p-1.5">
+            <button onClick={next} className="text-zinc-400 hover:text-white transition-colors p-2 active:scale-95">
               <SkipForward size={22} fill="currentColor" />
             </button>
 
@@ -128,6 +128,17 @@ export function BottomPlayer() {
 
         {/* Right: Volume */}
         <div className="flex items-center justify-end gap-4 w-[30%] min-w-[220px]">
+                    <button 
+            onClick={() => {
+              if (!currentTrack) return;
+              const downloadUrl = `/api/download/${currentTrack.id}?title=${encodeURIComponent(currentTrack.title)}`;
+              window.open(downloadUrl, '_blank');
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border border-transparent text-zinc-400 hover:text-white hover:bg-white/5"
+            title="Download FLAC/MP3 (SpotiFLAC Engine)"
+          >
+            <Download className="w-4 h-4" />
+          </button>
           <button 
             onClick={() => setShowLyrics(!showLyrics)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 border ${showLyrics ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/5'}`}

@@ -91,7 +91,7 @@ export function Albums() {
     } else {
       setTrackMeta(null);
     }
-  }, [activeTrack?.id]);
+  }, [activeTrack?.id, activeTrack?.artist, activeTrack?.title]);
 
   useEffect(() => {
     if (searchQuery.trim().length > 1) {

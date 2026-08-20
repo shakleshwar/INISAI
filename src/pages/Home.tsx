@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, Music, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Play, Pause, Music, Heart, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
 import type { Track } from '../types';
 import { useAudioStore } from '../store/useAudioStore';
 import { TrackContextMenu } from '../components/ui/TrackContextMenu';
 import { Carousel3D } from '../components/ui/Carousel3D';
+import { ArtImage } from '../components/ui/ArtImage';
 
 function formatDuration(seconds: number): string {
   if (!seconds || isNaN(seconds)) return '3:00';
@@ -13,17 +15,32 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+
+const HOME_GENRES = [
+  { name: 'Pop', gradient: 'from-pink-500 to-rose-600', artist: 'Taylor Swift', album: '1989' },
+  { name: 'Hip-Hop', gradient: 'from-purple-600 to-violet-500', artist: 'Kendrick Lamar', album: 'DAMN.' },
+  { name: 'Rock', gradient: 'from-red-600 to-orange-500', artist: 'AC/DC', album: 'Back in Black' },
+  { name: 'Lo-fi', gradient: 'from-violet-500 to-purple-700', artist: 'J Dilla', album: 'Donuts' },
+  { name: 'Anime', gradient: 'from-pink-500 to-purple-500', artist: 'Radwimps', album: 'Your Name' },
+  { name: 'Jazz', gradient: 'from-amber-600 to-yellow-500', artist: 'Miles Davis', album: 'Kind of Blue' },
+];
 export function Home() {
+  const navigate = useNavigate();
   const { 
     queue, currentIndex, isPlaying, setQueue, playTrack, togglePlay,
-    cachedTrending, cachedReleases, setCachedData,
     likedSongs, toggleLikedSong,
     trendingRegion, setTrendingRegion
   } = useAudioStore();
 
+  const cachedTrending = useAudioStore(state => state.cachedTrending);
+  const setCachedData = useAudioStore(state => state.setCachedData);
+
   const [trending, setTrending] = useState<Track[]>(cachedTrending[trendingRegion] || []);
-  const [newReleases, setNewReleases] = useState<any[]>(cachedReleases || []);
-  const [isLoading, setIsLoading] = useState(!cachedTrending[trendingRegion] || !cachedReleases);
+  const [isLoading, setIsLoading] = useState(() => {
+    // Only show full page loading if we don't have the main trending data yet
+    const hasTrending = cachedTrending[trendingRegion] && cachedTrending[trendingRegion].length > 0;
+    return !hasTrending;
+  });
   const [isTrendingLoading, setIsTrendingLoading] = useState(false);
 
   const REGIONS = [
@@ -39,28 +56,31 @@ export function Home() {
   useEffect(() => {
     let active = true;
 
-    const fetchData = async () => {
+    const fetchAllData = async () => {
       try {
-        // Fetch Releases if we don't have them
-        if (!cachedReleases && active) {
-          const releasesData = await api.getAllMusicReleases('5');
-          if (releasesData && Array.isArray(releasesData)) {
-            setNewReleases(releasesData);
-            setCachedData(trendingRegion, cachedTrending[trendingRegion] || [], releasesData);
+        const store = useAudioStore.getState();
+        
+        // 1. Fetch Releases if needed
+        if (!store.cachedReleases) {
+          const releasesData = await api.getNewReleases('10');
+          if (releasesData && Array.isArray(releasesData) && active) {
+            // Avoid overwriting trending with [] if it's fetching in parallel
+            const currentTrending = useAudioStore.getState().cachedTrending[trendingRegion];
+            setCachedData(trendingRegion, currentTrending || [], releasesData);
           }
         }
 
-        // Fetch Trending for current region if not cached
-        if (!cachedTrending[trendingRegion]) {
+        // 2. Fetch Trending if needed
+        const currentTrending = useAudioStore.getState().cachedTrending[trendingRegion];
+        if (!currentTrending || currentTrending.length === 0) {
           setIsTrendingLoading(true);
           const trendingData = await api.getTrending(trendingRegion);
-          if (active) {
+          if (active && trendingData) {
             setTrending(trendingData);
-            setCachedData(trendingRegion, trendingData, null); // passing null to keep releases unchanged in store implementation
-            setIsTrendingLoading(false);
+            setCachedData(trendingRegion, trendingData, useAudioStore.getState().cachedReleases);
           }
         } else if (active) {
-          setTrending(cachedTrending[trendingRegion]);
+          setTrending(currentTrending);
         }
       } catch (error) {
         console.error("Failed to fetch home data:", error);
@@ -72,10 +92,10 @@ export function Home() {
       }
     };
 
-    fetchData();
+    fetchAllData();
 
     return () => { active = false; };
-  }, [trendingRegion, cachedTrending, cachedReleases, setCachedData]);
+  }, [trendingRegion, setCachedData]); 
 
   const handleRegionChange = (regionId: string) => {
     if (regionId === trendingRegion) return;
@@ -115,7 +135,7 @@ export function Home() {
               <div key={i} className="eq-bar w-2 bg-gradient-to-t from-blue-500 to-purple-500 rounded-full h-full" />
             ))}
           </div>
-          <p className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold">Tuning in…</p>
+          <p className="text-[11px] uppercase tracking-widest text-zinc-500 font-bold">Tuning in...</p>
         </div>
       </div>
     );
@@ -167,41 +187,61 @@ export function Home() {
         </section>
       )}
 
-      <div className="px-6 md:px-10 space-y-12 pb-32 md:pb-10 -mt-6">
-
-        {/* ─── AllMusic New Releases ─── */}
-      {newReleases.length > 0 && (
-        <section className="mt-12 px-6 md:px-10">
-          <div className="flex items-end justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white tracking-tight">New Releases <span className="text-sm font-normal text-zinc-400 ml-2">from AllMusic</span></h2>
-            <button className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">See all</button>
-          </div>
+      
+        {/* Mobile Horizontal Sections (Albums & Artists) */}
+        <div className="md:hidden space-y-8 mt-2 mb-8">
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-            {newReleases.map((release, i) => (
-              <div key={i} className="group bg-white/[0.02] p-4 rounded-2xl border border-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.08] transition-all cursor-pointer hover:-translate-y-1 shadow-lg hover:shadow-xl">
-                <div className="relative aspect-square rounded-xl overflow-hidden bg-[#050505] shadow-inner mb-4 border border-white/5">
-                  {release.cover_url || release.image ? (
-                    <img src={release.cover_url || release.image} alt={release.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"><Music className="text-zinc-600 w-10 h-10" /></div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-xl scale-75 group-hover:scale-110 transition-transform duration-300">
-                      <Play size={20} fill="currentColor" className="ml-0.5" />
+
+
+          {/* Artists Row */}
+          {trending.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between px-6 mb-4">
+                <h2 className="text-xl font-bold text-white tracking-tight">Artists</h2>
+                <button onClick={() => navigate('/library')}><ArrowRight size={20} className="text-zinc-400" /></button>
+              </div>
+              <div className="flex overflow-x-auto hide-scrollbar px-6 gap-5 snap-x pb-4">
+                {Array.from(new Set(trending.map(t => t.artist))).filter(Boolean).slice(0, 10).map((artistName, i) => (
+                  <div key={i} className="snap-start shrink-0 w-[100px] flex flex-col items-center text-center" onClick={() => navigate('/library')}>
+                    <div className="w-[100px] h-[100px] rounded-full overflow-hidden bg-zinc-900 mb-3 shadow-md">
+                      <ArtImage artist={artistName as string} album={artistName as string} type="artist" className="w-full h-full object-cover" />
                     </div>
+                    <h3 className="text-[13px] text-zinc-300 font-medium truncate w-full">{artistName as string}</h3>
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+        
+
+          
+          
+          
+        {/* Desktop Top Artists */}
+        <section className="hidden md:block px-6 md:px-10 mt-8 mb-8">
+          <h2 className="text-2xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
+            <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-500 to-purple-500" />
+            Top Artists
+          </h2>
+          <div className="flex gap-6 overflow-x-auto hide-scrollbar pb-6">
+            {Array.from(new Set(trending.map(t => t.artist))).filter(Boolean).slice(0, 10).map((artistName, i) => (
+              <div key={i} className="flex flex-col items-center shrink-0 w-[160px] cursor-pointer group" onClick={() => navigate('/library')}>
+                <div className="w-[160px] h-[160px] rounded-full overflow-hidden bg-zinc-900 mb-4 shadow-lg relative">
+                  <ArtImage artist={artistName as string} album={artistName as string} type="artist" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
                 </div>
-                <h3 className="font-bold text-white truncate text-sm">{release.title}</h3>
-                <p className="text-xs text-zinc-500 truncate mt-1">{release.artist}</p>
-                {release.rating && (
-                  <p className="text-[9px] text-blue-400 mt-2 uppercase tracking-widest font-bold">Score: {release.rating}</p>
-                )}
+                <h3 className="text-base text-white font-bold truncate w-full text-center group-hover:text-blue-400 transition-colors">{artistName as string}</h3>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Artist</p>
               </div>
             ))}
           </div>
         </section>
-      )}
+        
+<div className="px-6 md:px-10 space-y-12 pb-32 md:pb-10 -mt-2">
+
+
+
 
       {/* ─── Bottom Grid: Top Global ─── */}
         <div className="max-w-4xl">
@@ -273,7 +313,7 @@ export function Home() {
                       >
                         <Heart size={20} className={(likedSongs || []).some(t => t.id === track.id) ? "fill-purple-500 text-purple-500" : ""} />
                       </button>
-                      <span className="text-sm font-medium text-zinc-500 tabular-nums w-10 text-right group-hover:text-zinc-300 transition-colors hidden sm:block">{formatDuration(0)}</span>
+                      <span className="text-sm font-medium text-zinc-500 tabular-nums w-10 text-right group-hover:text-zinc-300 transition-colors hidden sm:block">{formatDuration(track.duration || 0)}</span>
                       <div onClick={e => e.stopPropagation()} className="md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <TrackContextMenu track={track} />
                       </div>
@@ -283,6 +323,37 @@ export function Home() {
               })}
             </div>
           </section>
+          {/* Mobile Genres Row */}
+          <section className="md:hidden mt-12 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white tracking-tight">Genres</h2>
+              <button onClick={() => navigate('/genres')}>
+                <ArrowRight size={20} className="text-zinc-400" />
+              </button>
+            </div>
+            <div className="flex overflow-x-auto hide-scrollbar gap-4 snap-x pb-4">
+              {HOME_GENRES.map((genre, i) => (
+                <div 
+                  key={i} 
+                  className="snap-start shrink-0 w-[180px] h-[100px] rounded-2xl relative overflow-hidden bg-zinc-900 shadow-lg cursor-pointer"
+                  onClick={() => navigate('/genres')}
+                >
+                  <ArtImage 
+                    artist={genre.artist} 
+                    album={genre.album} 
+                    type="album" 
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay scale-110" 
+                  />
+                  <div className="absolute inset-0 bg-black/40" />
+                  <div className="absolute inset-0 p-3 flex flex-col justify-between">
+                    <h3 className="font-bold text-white text-lg drop-shadow-md">{genre.name}</h3>
+                    <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider drop-shadow-md truncate">{genre.artist}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
         </div>
       </div>
     </div>

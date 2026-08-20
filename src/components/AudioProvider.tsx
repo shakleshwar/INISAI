@@ -22,7 +22,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const addRecentSong = useAudioStore((state) => state.addRecentSong);
 
   const currentTrack = queue[currentIndex];
+  const engine = localStorage.getItem('streamingService') || 'youtube';
   const isOnline = currentTrack?.source === 'online';
+  const useYTPlayer = isOnline && engine === 'youtube';
 
   // Sync state to players
   useEffect(() => {
@@ -30,7 +32,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     
     addRecentSong(currentTrack);
     
-    if (!isOnline) {
+    if (!useYTPlayer) {
       // Pause YouTube
       try {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
@@ -40,7 +42,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       const audio = audioRef.current;
       if (audio) {
-        const targetSrc = currentTrack.audioSrc || '';
+        let targetSrc = currentTrack.audioSrc || '';
+        if (isOnline && engine !== 'youtube') {
+          targetSrc = '/api/stream/' + currentTrack.videoId + '?engine=' + engine + '&title=' + encodeURIComponent(currentTrack.title) + '&artist=' + encodeURIComponent(currentTrack.artist);
+        }
         if (audio.src !== targetSrc && !audio.src.endsWith(targetSrc)) {
           audio.src = targetSrc;
         }
@@ -66,7 +71,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {}
     }
-  }, [currentIndex, queue, isPlaying, isOnline, currentTrack]);
+  }, [currentIndex, queue, isPlaying, useYTPlayer, isOnline, engine, currentTrack, addRecentSong]);
 
   // Sync volume
   useEffect(() => {
@@ -95,11 +100,54 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         navigator.mediaSession.setActionHandler('pause', pause);
         navigator.mediaSession.setActionHandler('previoustrack', prev);
         navigator.mediaSession.setActionHandler('nexttrack', next);
+        
+        try {
+          navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (details.seekTime !== undefined) {
+              useAudioStore.getState().seek(details.seekTime);
+            }
+          });
+          navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+            const state = useAudioStore.getState();
+            const skipTime = details.seekOffset || 10;
+            state.seek(Math.max(0, state.progress - skipTime));
+          });
+          navigator.mediaSession.setActionHandler('seekforward', (details) => {
+            const state = useAudioStore.getState();
+            const skipTime = details.seekOffset || 10;
+            state.seek(Math.min(state.duration || 100, state.progress + skipTime));
+          });
+        } catch (error) {
+          console.warn('Warning! The "seekto", "seekbackward", "seekforward" media session action is not supported.');
+        }
       } catch (e) {
         console.error("MediaSession error:", e);
       }
     }
   }, [currentIndex, queue, currentTrack, play, pause, prev, next]);
+
+  // Sync MediaSession position
+  useEffect(() => {
+    const unsub = useAudioStore.subscribe((state, prevState) => {
+      // Only update when isPlaying changes, duration changes, or a large seek happens
+      if (
+        state.isPlaying !== prevState.isPlaying ||
+        state.duration !== prevState.duration ||
+        Math.abs(state.progress - prevState.progress) > 1.5
+      ) {
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: state.duration || 100,
+              playbackRate: state.isPlaying ? 1 : 0,
+              position: state.progress || 0
+            });
+          } catch (e) {}
+        }
+      }
+    });
+    return unsub;
+  }, []);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -119,9 +167,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           togglePlay();
           break;
         case 'ArrowRight':
-          // Optionally add scrubbing later, for now we can skip track or do nothing
+          if (e.ctrlKey) {
+            e.preventDefault();
+            useAudioStore.getState().next();
+          } else {
+            e.preventDefault();
+            const state = useAudioStore.getState();
+            state.seek(Math.min((state.duration || 100), state.progress + 10));
+          }
           break;
         case 'ArrowLeft':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            useAudioStore.getState().prev();
+          } else {
+            e.preventDefault();
+            const state = useAudioStore.getState();
+            state.seek(Math.max(0, state.progress - 10));
+          }
           break;
       }
     };
@@ -133,8 +196,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   // Handle external seeking from store (User scrubbing the progress bar)
   useEffect(() => {
     const unsub = useAudioStore.subscribe((state, prevState) => {
-      // If the difference is large, it was a manual seek by the user
-      if (Math.abs(state.progress - prevState.progress) > 1.5) {
+      // If seekRequest changed, it was a manual seek by the user
+      if (state.seekRequest !== prevState.seekRequest) {
         if (!isOnline && audioRef.current) {
           audioRef.current.currentTime = state.progress;
         } else if (isOnline && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
@@ -164,12 +227,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       <audio
         ref={audioRef}
         onTimeUpdate={() => {
-          if (audioRef.current && !isOnline) {
+          if (audioRef.current && !useYTPlayer) {
             _setProgress(audioRef.current.currentTime);
           }
         }}
         onDurationChange={() => {
-          if (audioRef.current && !isOnline) {
+          if (audioRef.current && !useYTPlayer) {
             _setDuration(audioRef.current.duration);
           }
         }}
@@ -190,7 +253,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       {/* Hidden YouTube Player */}
       <div className="hidden pointer-events-none opacity-0 w-0 h-0 absolute overflow-hidden">
-        {isOnline && currentTrack?.videoId && (
+        {useYTPlayer && currentTrack?.videoId && (
           <YouTube
             videoId={currentTrack.videoId}
             opts={{

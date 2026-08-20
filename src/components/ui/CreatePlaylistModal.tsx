@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Music2 } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 
 interface CreatePlaylistModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreate?: (name: string) => void;
 }
 
-export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProps) {
+export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylistModalProps) {
   const [name, setName] = useState('');
   const createPlaylist = useAudioStore((state) => state.createPlaylist);
 
@@ -16,14 +18,18 @@ export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProp
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      createPlaylist(name.trim());
+      if (onCreate) {
+        onCreate(name.trim());
+      } else {
+        createPlaylist(name.trim());
+      }
       setName('');
       onClose();
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
@@ -31,7 +37,10 @@ export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProp
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div 
+        className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
         
         <div className="p-6">
@@ -85,6 +94,7 @@ export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProp
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

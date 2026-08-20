@@ -31,7 +31,8 @@ export interface AudioDBTrack {
 
 export const api = {
   async searchOnlineTracks(query: string): Promise<Track[]> {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const engine = localStorage.getItem('streamingService') || 'youtube';
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${engine}`);
     if (!res.ok) {
       throw new Error('Failed to fetch search results');
     }
@@ -81,87 +82,40 @@ export const api = {
     return `/api/stream/${videoId}`;
   },
 
-  async getLyricaLyrics(title: string, artist: string, targetLang?: string) {
+  async getLyricaLyrics(title: string, artist: string) {
     try {
-      let url = `/lyrica/lyrics/?song=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&word=true&timestamps=true`;
-      if (targetLang) {
-        url += `&translate=true&language=${encodeURIComponent(targetLang)}`;
-      }
+      // Use LRCLib to fetch lyrics directly, bypassing the Lyrica Python backend
+      const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
       
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Lyrica lyrics fetch failed');
-      return await response.json();
+      if (!response.ok) throw new Error('LRCLib fetch failed');
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        // Return the first match which is usually the best one
+        return { status: 'success', data: data[0] };
+      }
+      return { status: 'error', message: 'No lyrics found' };
     } catch (error) {
-      console.error('Lyrica lyrics error:', error);
+      console.error('LRCLib lyrics error:', error);
       return null;
     }
   },
 
-  async getLyricaMetadata(title: string, artist: string) {
-    try {
-      const url = `/lyrica/lyrics/?song=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&metadata=true&mood=true`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Lyrica metadata fetch failed');
-      return await response.json();
-    } catch (error) {
-      console.error('Lyrica metadata error:', error);
-      return null;
-    }
+  async getLyricaMetadata() {
+    // LRCLib doesn't provide mood/metadata like Lyrica did, so we safely return null
+    return null;
   },
 
-  // --- AllMusic SDK ---
+  // --- iTunes API (Free Alternative for New Releases) ---
   
-  async searchAllMusic(query: string, type: 'artists' | 'albums' | 'songs' = 'artists', limit = '10') {
+  async getNewReleases(limit = '10') {
     try {
-      const res = await fetch(`/api/allmusic/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`);
+      const res = await fetch(`/api/releases?limit=${limit}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (err) {
-      console.error('AllMusic search error:', err);
-      return null;
-    }
-  },
-
-  async getAllMusicAlbum(albumId: string) {
-    try {
-      const res = await fetch(`/api/allmusic/album/${encodeURIComponent(albumId)}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error('AllMusic album error:', err);
-      return null;
-    }
-  },
-
-  async getAllMusicSong(songId: string) {
-    try {
-      const res = await fetch(`/api/allmusic/song/${encodeURIComponent(songId)}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error('AllMusic song error:', err);
-      return null;
-    }
-  },
-
-  async getAllMusicArtist(artistId: string) {
-    try {
-      const res = await fetch(`/api/allmusic/artist/${encodeURIComponent(artistId)}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error('AllMusic artist error:', err);
-      return null;
-    }
-  },
-
-  async getAllMusicReleases(limit = '10') {
-    try {
-      const res = await fetch(`/api/allmusic/releases?limit=${limit}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error('AllMusic releases error:', err);
+      console.error('iTunes releases error:', err);
       return null;
     }
   },

@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Heart, Mu
 import { useAudioStore } from '../../store/useAudioStore';
 import { LyricsView } from '../audio/LyricsView';
 import { QueueView } from '../audio/QueueView';
+import { MiniLyrics } from '../audio/MiniLyrics';
 import { TrackContextMenu } from '../ui/TrackContextMenu';
 
 function formatTime(seconds: number) {
@@ -16,9 +17,87 @@ export function MobilePlayer() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [touchStart, setTouchStart] = useState<{x: number, y: number} | null>(null);
+  const [touchOffset, setTouchOffset] = useState<number>(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isVerticalScroll, setIsVerticalScroll] = useState<boolean | null>(null);
   const { queue, currentIndex, isPlaying, progress, duration, togglePlay, next, prev, seek, isShuffled, loopMode, toggleShuffle, toggleLoop, likedSongs, toggleLikedSong } = useAudioStore();
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isTransitioning) return;
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    setIsVerticalScroll(null);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null || isTransitioning) return;
+    
+    const diffX = e.touches[0].clientX - touchStart.x;
+    const diffY = e.touches[0].clientY - touchStart.y;
+    
+    if (isVerticalScroll === null) {
+      if (Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
+        setIsVerticalScroll(true);
+      } else if (Math.abs(diffX) > 10) {
+        setIsVerticalScroll(false);
+      }
+    }
+    
+    if (isVerticalScroll === false) {
+      setTouchOffset(diffX);
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    if (touchStart === null || isTransitioning) return;
+    
+    if (isVerticalScroll === false) {
+      if (touchOffset > 100) {
+        // Swipe Right -> Prev
+        setIsTransitioning(true);
+        setTouchOffset(window.innerWidth);
+        setTimeout(() => {
+          prev();
+          setIsTransitioning(false);
+          setTouchOffset(-window.innerWidth);
+          setTimeout(() => {
+            setIsTransitioning(true);
+            setTouchOffset(0);
+            setTimeout(() => setIsTransitioning(false), 150);
+          }, 20);
+        }, 150);
+      } else if (touchOffset < -100) {
+        // Swipe Left -> Next
+        setIsTransitioning(true);
+        setTouchOffset(-window.innerWidth);
+        setTimeout(() => {
+          next();
+          setIsTransitioning(false);
+          setTouchOffset(window.innerWidth);
+          setTimeout(() => {
+            setIsTransitioning(true);
+            setTouchOffset(0);
+            setTimeout(() => setIsTransitioning(false), 150);
+          }, 20);
+        }, 150);
+      } else {
+        setIsTransitioning(true);
+        setTouchOffset(0);
+        setTimeout(() => setIsTransitioning(false), 150);
+      }
+    }
+    
+    setTouchStart(null);
+    setIsVerticalScroll(null);
+  };
+
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
+
+  const transformStyle = {
+    transform: `translateX(${touchOffset}px)`,
+    opacity: 1 - Math.abs(touchOffset) / (window.innerWidth || 500) * 0.5,
+    transition: isTransitioning ? 'transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 150ms cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none'
+  };
 
   if (!currentTrack) return null;
 
@@ -51,25 +130,40 @@ export function MobilePlayer() {
               <ChevronDown size={28} />
             </button>
             <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-zinc-500">Now Playing</span>
-            <div className="w-10" />
-          </div>
-
-          {/* Artwork */}
-          <div className="relative z-10 flex-1 flex items-center justify-center px-10 py-4">
-            <div className="w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
-              {currentTrack.coverArtUrl ? (
-                <img 
-                  src={currentTrack.coverArtUrl} 
-                  alt="Cover" 
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                  <Music size={48} className="text-zinc-600" />
-                </div>
-              )}
+            <div className="flex items-center gap-4 text-zinc-400 mr-2">
+              <button onClick={() => setShowLyrics(true)} className="hover:text-white transition-colors" title="Lyrics">
+                <Mic2 size={22} />
+              </button>
+              <button onClick={() => setShowQueue(true)} className="hover:text-white transition-colors" title="Queue">
+                <ListMusic size={22} />
+              </button>
             </div>
           </div>
+
+          {/* Swipeable Main Area */}
+          <div
+            className="flex-1 flex flex-col w-full relative z-10"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={transformStyle}
+          >
+            {/* Artwork */}
+            <div className="relative z-10 flex-1 flex items-center justify-center px-10 py-4">
+              <div className="w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
+                {currentTrack.coverArtUrl ? (
+                  <img 
+                    src={currentTrack.coverArtUrl} 
+                    alt="Cover" 
+                    className="w-full h-full object-cover pointer-events-none" 
+                  />
+                ) : (
+                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                    <Music size={48} className="text-zinc-600" />
+                  </div>
+                )}
+              </div>
+            </div>
 
           {/* Track Info */}
           <div className="relative z-10 px-8 mb-4 flex items-start justify-between">
@@ -92,15 +186,27 @@ export function MobilePlayer() {
 
           {/* Progress */}
           <div className="relative z-10 px-8 mb-6">
-            <input 
-              type="range" 
-              min={0} 
-              max={duration || 100} 
-              value={progress}
-              onChange={(e) => seek(Number(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-[10px] text-zinc-500 mt-1.5 font-mono tabular-nums">
+            <div className="relative h-1.5 w-full flex items-center mb-1.5 cursor-pointer">
+              <input 
+                type="range" 
+                min={0} 
+                max={duration || 100} 
+                value={progress || 0}
+                onChange={(e) => seek(Number(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+              />
+              <div className="absolute left-0 right-0 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="absolute top-0 left-0 h-full bg-emerald-500 rounded-full transition-[width] ease-linear duration-300"
+                  style={{ width: `${(progress / (duration || 1)) * 100}%` }}
+                />
+              </div>
+              <div 
+                className="absolute w-3 h-3 bg-white rounded-full shadow-lg -ml-1.5 pointer-events-none transition-[left] ease-linear duration-300"
+                style={{ left: `${(progress / (duration || 1)) * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-zinc-500 font-mono tabular-nums">
               <span>{formatTime(progress)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -113,7 +219,7 @@ export function MobilePlayer() {
                 <Shuffle size={22} />
               </button>
               
-              <button onClick={prev} className="text-zinc-200 hover:text-white p-2 transition-colors">
+              <button onClick={prev} className="text-zinc-200 hover:text-white p-3 md:p-4 active:scale-95 transition-all">
                 <SkipBack size={32} fill="currentColor" />
               </button>
               
@@ -124,7 +230,7 @@ export function MobilePlayer() {
                 {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
               </button>
               
-              <button onClick={next} className="text-zinc-200 hover:text-white p-2 transition-colors">
+              <button onClick={next} className="text-zinc-200 hover:text-white p-3 md:p-4 active:scale-95 transition-all">
                 <SkipForward size={32} fill="currentColor" />
               </button>
 
@@ -133,24 +239,15 @@ export function MobilePlayer() {
               </button>
             </div>
             
-            {/* Bottom Controls (Lyrics & Queue Cards) */}
-            <div className="w-full pt-8 pb-4 flex gap-3">
-              <button 
-                onClick={() => setShowLyrics(true)}
-                className="flex-1 bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors rounded-xl p-3.5 flex items-center justify-center gap-2 group border border-white/[0.05]"
-              >
-                <Mic2 className={`w-5 h-5 ${showLyrics ? 'text-emerald-400' : 'text-white group-hover:text-emerald-400'}`} />
-                <span className="text-white font-bold tracking-wide text-sm">Lyrics</span>
-              </button>
-              
-              <button 
-                onClick={() => setShowQueue(true)}
-                className="flex-1 bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors rounded-xl p-3.5 flex items-center justify-center gap-2 group border border-white/[0.05]"
-              >
-                <ListMusic className={`w-5 h-5 ${showQueue ? 'text-emerald-400' : 'text-white group-hover:text-emerald-400'}`} />
-                <span className="text-white font-bold tracking-wide text-sm">Queue</span>
-              </button>
+            {/* Bottom Controls */}
+            <div className="w-full pb-4 pt-8">
+              <MiniLyrics 
+                currentTrack={currentTrack} 
+                progress={progress} 
+                onClick={() => setShowLyrics(true)} 
+              />
             </div>
+          </div>
           </div>
         </div>
         {showLyrics && <LyricsView onClose={() => setShowLyrics(false)} />}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ArtImage } from './ArtImage';
 import { Play } from 'lucide-react';
 
@@ -17,17 +17,66 @@ interface Carousel3DProps {
 
 export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
   const [activeIndex, setActiveIndex] = useState(Math.floor(items.length / 2));
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+
+  const [isDragging, setIsDragging] = useState(false);
 
   if (!items || items.length === 0) return null;
 
+  const handleDragStart = (clientX: number) => {
+    touchStartX.current = clientX;
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (clientX: number) => {
+    if (!isDragging) return;
+    touchEndX.current = clientX;
+  };
+
+  const handleDragEnd = () => {
+    if (!isDragging || !touchStartX.current || !touchEndX.current) {
+      setIsDragging(false);
+      return;
+    }
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    
+    if (isLeftSwipe) {
+      setActiveIndex(prev => prev + 1);
+    } else if (isRightSwipe) {
+      setActiveIndex(prev => prev - 1);
+    }
+    
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+    setIsDragging(false);
+  };
+
   return (
-    <div className="relative w-full h-[450px] flex items-center justify-center perspective-1000 overflow-hidden mb-12 mt-4">
+    <div 
+      className="relative w-full h-[450px] flex items-center justify-center perspective-1000 overflow-hidden mb-12 mt-4 select-none"
+      onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+      onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+      onTouchEnd={handleDragEnd}
+      onMouseDown={(e) => handleDragStart(e.clientX)}
+      onMouseMove={(e) => handleDragMove(e.clientX)}
+      onMouseUp={handleDragEnd}
+      onMouseLeave={handleDragEnd}
+    >
       {/* Background ambient glow */}
       <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-purple-900/5 to-transparent blur-3xl -z-10" />
       
       {items.map((item, index) => {
-        const isActive = index === activeIndex;
-        const offset = index - activeIndex;
+        const n = items.length;
+        // Calculate shortest distance in circular array
+        let offset = (index - (activeIndex % n)) % n;
+        if (offset < 0) offset += n; // Ensure positive modulo
+        if (offset > Math.floor(n / 2)) offset -= n;
+        
+        const isActive = offset === 0;
         
         // Calculate transform based on offset from center
         const absOffset = Math.abs(offset);
@@ -53,13 +102,13 @@ export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
             }}
             onClick={() => {
               if (isActive) onClick(item);
-              else setActiveIndex(index);
+              else setActiveIndex(prev => prev + offset);
             }}
           >
             {/* Card Content */}
             <div className={`w-[260px] h-[340px] bg-[#0a0a0f] rounded-2xl overflow-hidden relative border ${isActive ? 'border-white/10' : 'border-white/5'} flex flex-col`}>
               {/* Cover Art */}
-              <div className="h-[260px] w-full bg-zinc-900 shrink-0 relative overflow-hidden">
+              <div className="h-[260px] w-full bg-zinc-900 shrink-0 relative overflow-hidden [transform:translateZ(0)] rounded-t-2xl">
                 <ArtImage 
                   artist={item.artist} 
                   album={item.title} 

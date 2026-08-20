@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Heart, PlusCircle, ListPlus, Radio, User2, FileText, Share2, ChevronRight, XCircle } from 'lucide-react';
+import { MoreVertical, Heart, PlusCircle, ListPlus, Share2, ChevronRight, Trash2, Download } from 'lucide-react';
+import { db } from '../../lib/db';
 import { useAudioStore } from '../../store/useAudioStore';
 import type { Track } from '../../types';
+import { CreatePlaylistModal } from './CreatePlaylistModal';
 
 interface TrackContextMenuProps {
   track: Track;
@@ -11,6 +13,7 @@ interface TrackContextMenuProps {
 export function TrackContextMenu({ track }: TrackContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showPlaylists, setShowPlaylists] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -112,63 +115,75 @@ export function TrackContextMenu({ track }: TrackContextMenuProps) {
             </span>
           </button>
 
-          <div className="h-px bg-white/10 my-1 mx-2" />
-
-          <button 
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors group"
-            onClick={(e) => handleAction(e, () => {})}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(`https://aura.app/track/${track.id}`);
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2 flex items-center gap-3 text-sm text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
           >
-            <XCircle size={16} className="text-zinc-400 group-hover:text-white" />
-            <span className="group-hover:text-white">Exclude from your taste profile</span>
+            <Share2 size={16} />
+            Share
           </button>
+          
+          {track.source !== 'local' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const downloadUrl = `/api/download/${track.id}?title=${encodeURIComponent(track.title)}`;
+                window.open(downloadUrl, '_blank');
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 flex items-center gap-3 text-sm text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <Download size={16} />
+              Download
+            </button>
+          )}
+          
+          {track.source === 'local' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('Are you sure you want to remove this local track?')) {
+                  db.removeLocalTrack(track.id).then(() => {
+                    window.location.reload();
+                  });
+                }
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 flex items-center gap-3 text-sm text-red-400 hover:bg-white/10 transition-colors"
+            >
+              <Trash2 size={16} />
+              Remove from Device
+            </button>
+          )}
 
-          <button 
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors group"
-            onClick={(e) => handleAction(e, () => {})}
-          >
-            <Radio size={16} className="text-zinc-400 group-hover:text-white" />
-            <span className="group-hover:text-white">Go to song radio</span>
-          </button>
-
-          <button 
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors group"
-            onClick={(e) => handleAction(e, () => {})}
-          >
-            <User2 size={16} className="text-zinc-400 group-hover:text-white" />
-            <span className="group-hover:text-white">Go to artist</span>
-          </button>
-
-          <button 
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors group"
-            onClick={(e) => handleAction(e, () => {})}
-          >
-            <FileText size={16} className="text-zinc-400 group-hover:text-white" />
-            <span className="group-hover:text-white">View credits</span>
-          </button>
-
-          <div className="h-px bg-white/10 my-1 mx-2" />
-
-          <button 
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 transition-colors group"
-            onClick={(e) => handleAction(e, () => {})}
-          >
-            <div className="flex items-center gap-3">
-              <Share2 size={16} className="text-zinc-400 group-hover:text-white" />
-              <span className="group-hover:text-white">Share</span>
-            </div>
-            <ChevronRight size={16} className="text-zinc-500" />
-          </button>
         </>
       ) : (
         <>
-          <div className="px-4 py-2 flex items-center gap-2 text-white border-b border-white/10 mb-1">
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowPlaylists(false); }}
-              className="p-1 -ml-1 hover:bg-white/10 rounded-full transition-colors"
+          <div className="px-4 py-2 flex items-center justify-between text-white border-b border-white/10 mb-1">
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowPlaylists(false); }}
+                className="p-1 -ml-1 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <ChevronRight size={16} className="rotate-180" />
+              </button>
+              <span className="font-semibold text-sm">Add to playlist</span>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreateModalOpen(true);
+                setIsOpen(false);
+              }}
+              className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              title="Create new playlist"
             >
-              <ChevronRight size={16} className="rotate-180" />
+              <PlusCircle size={16} />
             </button>
-            <span className="font-semibold text-sm">Add to playlist</span>
           </div>
           
           {playlists.length === 0 ? (
@@ -204,6 +219,16 @@ export function TrackContextMenu({ track }: TrackContextMenuProps) {
       </button>
 
       {isOpen && createPortal(menuContent, document.body)}
+      <CreatePlaylistModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={(name) => {
+          const createPlaylist = useAudioStore.getState().createPlaylist;
+          const addTrackToPlaylist = useAudioStore.getState().addTrackToPlaylist;
+          const newId = createPlaylist(name);
+          addTrackToPlaylist(newId, track);
+        }}
+      />
     </>
   );
 }

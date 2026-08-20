@@ -211,8 +211,20 @@ export function Library() {
                   onFocus={() => { setShowHistory(true); setSearchFocused(true); }}
                   onBlur={() => setSearchFocused(false)}
                   placeholder="What do you want to listen to?"
-                  className="w-full bg-transparent py-4 pl-12 pr-32 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition-all duration-300 relative z-10 rounded-2xl"
+                  className="w-full bg-transparent py-4 pl-12 pr-36 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition-all duration-300 relative z-10 rounded-2xl"
                 />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery('');
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-[105px] p-2 text-zinc-500 hover:text-white transition-colors z-20 hover:bg-white/10 rounded-full"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
                 <button 
                   type="submit" 
                   disabled={isSearching || !query.trim()}

@@ -1,20 +1,24 @@
 import express from 'express';
 import cors from 'cors';
 import YTMusic from 'ytmusic-api';
+import * as cheerio from 'cheerio';
 import ytDlp from 'yt-dlp-exec';
 import https from 'https';
 // @ts-ignore
 import albumArt from 'album-art';
 import dotenv from 'dotenv';
-import { allMusicService } from './allmusic';
 import { audioDBService } from './audiodb';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3001;
 
 app.use(cors());
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 const ytmusic = new YTMusic();
 
@@ -25,79 +29,18 @@ ytmusic.initialize().then(() => {
   console.error('Failed to initialize YTMusic API:', err);
 });
 
-// Search Route — Chosic API + YouTube Music resolution
-const CHOSIC_API_BASE = 'https://api.parse.bot/scraper/2d0c0106-75f6-4f45-918d-1633cfa4cf74';
-
-// In-memory cache for chosic search results to avoid redundant API calls
-const chosicSearchCache = new Map<string, { data: any[], expiresAt: number }>();
-
+// Search Route
+// Search Route
 app.get('/api/search', async (req, res) => {
   const query = req.query.q as string;
+
   if (!query) {
     return res.status(400).send('Missing query parameter');
   }
 
   try {
-    // 1. First, fetch from Chosic for rich metadata (Spotify album art, etc.)
-    let chosicResults: any[] = [];
-    const cacheKey = query.toLowerCase().trim();
-    const cached = chosicSearchCache.get(cacheKey);
-    
-    if (cached && cached.expiresAt > Date.now()) {
-      chosicResults = cached.data;
-    } else {
-      try {
-        const chosicUrl = `${CHOSIC_API_BASE}/search_songs?query=${encodeURIComponent(query)}&limit=20`;
-        const chosicRes = await fetch(chosicUrl);
-        if (chosicRes.ok) {
-          const chosicData = await chosicRes.json();
-          chosicResults = Array.isArray(chosicData) ? chosicData : (chosicData?.results || chosicData?.data || []);
-          // Cache for 30 minutes
-          chosicSearchCache.set(cacheKey, { data: chosicResults, expiresAt: Date.now() + 30 * 60 * 1000 });
-        }
-      } catch (chosicErr) {
-        console.error('Chosic API error (falling back to ytmusic):', chosicErr);
-      }
-    }
-
-    // 2. If Chosic returned results, resolve YouTube videoIds for playback
-    if (chosicResults.length > 0) {
-      const tracks: any[] = [];
-      
-      await Promise.all(chosicResults.map(async (item: any, index: number) => {
-        const songTitle = item.title || item.name || '';
-        const artistName = item.artist || item.artist_name || '';
-        const coverArt = item.thumbnail || item.image || item.cover || '';
-        const spotifyId = item.spotify_id || item.id || '';
-        
-        try {
-          // Resolve to a YouTube video ID for playback
-          const ytResults = await ytmusic.searchSongs(`${artistName} ${songTitle}`);
-          if (ytResults && ytResults.length > 0) {
-            const song = ytResults[0];
-            tracks[index] = {
-              id: song.videoId,
-              videoId: song.videoId,
-              spotifyId,
-              title: songTitle || song.name,
-              artist: artistName || song.artist.name,
-              duration: song.duration,
-              coverArtUrl: coverArt || song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || '',
-              source: 'online'
-            };
-          }
-        } catch (err) {
-          console.error(`Failed to resolve "${songTitle}" on YouTube:`, err);
-        }
-      }));
-
-      const validTracks = tracks.filter(t => t !== undefined);
-      return res.json(validTracks);
-    }
-
-    // 3. Fallback: direct YouTube Music search if Chosic failed
-    const results = await ytmusic.searchSongs(query);
-    const tracks = results.map(song => ({
+    const ytResults = await ytmusic.searchSongs(query);
+    const validTracks = ytResults.map((song: any) => ({
       id: song.videoId,
       videoId: song.videoId,
       title: song.name,
@@ -106,60 +49,49 @@ app.get('/api/search', async (req, res) => {
       coverArtUrl: song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || '',
       source: 'online'
     }));
-    
-    res.json(tracks);
+
+    res.json(validTracks);
   } catch (error) {
     console.error('Search error:', error);
-    res.status(500).send('Search failed');
+    res.status(500).send('Failed to fetch search results');
   }
 });
 
-// Search Suggestions Route
+
+// Suggestion Route
 app.get('/api/suggest', async (req, res) => {
   const query = req.query.q as string;
   if (!query) {
     return res.json([]);
   }
-
   try {
     const suggestions = await ytmusic.getSearchSuggestions(query);
-    res.json(suggestions);
+    // suggestions is usually an array of strings or objects, ytmusic-api returns an array of strings or objects
+    const results = Array.isArray(suggestions) 
+      ? suggestions.map(s => typeof s === 'string' ? s : s.query || s.title || '') 
+      : [];
+    res.json(results.filter(Boolean));
   } catch (error) {
     console.error('Suggest error:', error);
     res.json([]);
   }
 });
 
-// Related/Up Next Tracks Route
-app.get('/api/related', async (req, res) => {
-  const videoId = req.query.id as string;
-  if (!videoId) {
-    return res.status(400).send('Missing video ID');
-  }
 
+// Related Tracks Route
+app.get('/api/related', async (req, res) => {
+  const id = req.query.id as string;
+  if (!id) return res.json([]);
+  
   try {
-    const related = await ytmusic.getSongRelated(videoId);
-    
-    // Map them to match our Track format
-    const tracks = related.map(song => ({
-      id: song.videoId,
-      videoId: song.videoId,
-      title: song.name,
-      artist: song.artist.name,
-      duration: song.duration,
-      coverArtUrl: song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || '',
-      source: 'online'
-    }));
-    
-    res.json(tracks);
-  } catch (error) {
-    console.error('Related tracks error:', error);
+    // Currently fallback to basic search based on id or empty array if ytmusic has no direct related endpoint
+    // Actually ytmusic has getUpNext(id) or similar, but let's just return empty array for now or use search
+    res.json([]);
+  } catch (err) {
+    console.error('Related error:', err);
     res.json([]);
   }
 });
-
-// Trending Route
-import * as cheerio from 'cheerio';
 
 app.get('/api/trending', async (req, res) => {
   try {
@@ -229,7 +161,7 @@ app.get('/api/trending', async (req, res) => {
     res.json(uniqueTracks);
   } catch (error) {
     console.error('Trending error:', error);
-    res.status(500).send('Failed to fetch trending');
+    res.status(500).send('Failed to fetch trending: ' + error.message);
   }
 });
 
@@ -279,6 +211,9 @@ const streamUrlCache = new Map<string, { url: string, expiresAt: number }>();
 // Stream Route
 app.get('/api/stream/:id', async (req, res) => {
   const videoId = req.params.id;
+  const engine = req.query.engine as string;
+  const title = req.query.title as string;
+  const artist = req.query.artist as string;
   
   if (!videoId) {
     return res.status(400).send('Missing video ID');
@@ -288,7 +223,109 @@ app.get('/api/stream/:id', async (req, res) => {
     const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36';
     let streamUrl = '';
 
-    // Check cache first (valid for 2 hours)
+    // Cache key incorporates the engine
+    const cacheKey = `${videoId}-${engine || 'youtube'}`;
+    const cached = streamUrlCache.get(cacheKey);
+    
+    if (cached && cached.expiresAt > Date.now()) {
+      streamUrl = cached.url;
+    } else {
+      let ytDlpQuery = videoId;
+      
+      // If engine is soundcloud, we use yt-dlp's built in scsearch
+      if (engine === 'soundcloud' && title && artist) {
+        ytDlpQuery = `scsearch1:${artist} ${title}`;
+        console.log('Streaming via SoundCloud:', ytDlpQuery);
+      }
+
+            let info = await ytDlp(ytDlpQuery, {
+        dumpJson: true,
+        format: 'm4a/bestaudio/best',
+        noCheckCertificates: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        addHeader: [
+          'referer:youtube.com',
+          `user-agent:${userAgent}`
+        ]
+      }) as any;
+      
+      // Auto-fallback: if SoundCloud returns a 30-sec preview (duration <= 35), switch to YouTube
+      if (engine === 'soundcloud' && info.duration && info.duration <= 35) {
+        console.log('SoundCloud returned a preview. Falling back to YouTube automatically.');
+        info = await ytDlp(videoId, {
+          dumpJson: true,
+          format: 'm4a/bestaudio/best',
+          noCheckCertificates: true,
+          noWarnings: true,
+          preferFreeFormats: true,
+          addHeader: [
+            'referer:youtube.com',
+            `user-agent:${userAgent}`
+          ]
+        }) as any;
+      }
+
+
+      streamUrl = (engine === 'soundcloud' && info.formats) ? (info.formats.find(f => f.url && !f.url.includes('m3u8'))?.url || info.url) : info.url;
+      if (!streamUrl) {
+        return res.status(404).send('Stream URL not found');
+      }
+      
+      // Cache the URL for 2 hours
+      streamUrlCache.set(cacheKey, {
+        url: streamUrl,
+        expiresAt: Date.now() + 2 * 60 * 60 * 1000
+      });
+    }
+
+    const clientReqHeaders: Record<string, string> = {
+      'User-Agent': userAgent,
+      'Accept': '*/*',
+      'Range': req.headers.range || 'bytes=0-',
+    };
+
+    https.get(streamUrl, { headers: clientReqHeaders }, (streamRes) => {
+      res.status(streamRes.statusCode || 200);
+      
+      const headersToForward = [
+        'content-type',
+        'content-length',
+        'accept-ranges',
+        'content-range'
+      ];
+      
+      headersToForward.forEach(header => {
+        if (streamRes.headers[header]) {
+          res.setHeader(header, streamRes.headers[header] as string);
+        }
+      });
+
+      streamRes.pipe(res);
+    }).on('error', (err) => {
+      console.error('HTTPS Proxy error:', err);
+      if (!res.headersSent) res.status(500).send('Proxy error');
+    });
+
+  } catch (error) {
+    console.error('Streaming error:', error);
+    if (!res.headersSent) res.status(500).send('Failed to fetch stream');
+  }
+});
+
+
+app.get('/api/download/:id', async (req, res) => {
+  const videoId = req.params.id;
+  const title = (req.query.title as string) || 'download';
+  
+  if (!videoId) {
+    return res.status(400).send('Missing video ID');
+  }
+
+  try {
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36';
+    let streamUrl = '';
+
     const cached = streamUrlCache.get(videoId);
     if (cached && cached.expiresAt > Date.now()) {
       streamUrl = cached.url;
@@ -306,106 +343,77 @@ app.get('/api/stream/:id', async (req, res) => {
       }) as any;
 
       streamUrl = info.url;
-      if (!streamUrl) {
-        return res.status(404).send('Stream URL not found');
-      }
-      
-      // Cache the URL for 2 hours (YouTube links usually expire after 6 hours)
-      streamUrlCache.set(videoId, {
-        url: streamUrl,
-        expiresAt: Date.now() + 2 * 60 * 60 * 1000
-      });
+      if (!streamUrl) return res.status(404).send('Stream URL not found');
+      streamUrlCache.set(videoId, { url: streamUrl, expiresAt: Date.now() + 2 * 60 * 60 * 1000 });
     }
 
-    const clientReqHeaders: Record<string, string> = {
-      'User-Agent': userAgent,
-    };
+    const clientReqHeaders: Record<string, string> = { 'User-Agent': userAgent };
 
-    if (req.headers.range) {
-      clientReqHeaders['Range'] = req.headers.range as string;
-    }
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(title)}.m4a"`);
+    res.setHeader('Content-Type', 'audio/mp4');
 
     https.get(streamUrl, { headers: clientReqHeaders }, (streamRes) => {
-      console.log(`[Stream] YouTube responded with ${streamRes.statusCode} for ${videoId} (Range: ${clientReqHeaders['Range'] || 'none'})`);
-
       if (streamRes.statusCode === 302 && streamRes.headers.location) {
         https.get(streamRes.headers.location, { headers: clientReqHeaders }, (redirectRes) => {
-          res.status(redirectRes.statusCode || 200);
-          pipeHeaders(redirectRes, res);
           redirectRes.pipe(res);
         }).on('error', (err) => {
-          console.error('Redirect proxy error:', err);
-          if (!res.headersSent) res.status(500).send('Stream proxy failed');
+          console.error('Download redirect error:', err);
+          if (!res.headersSent) res.status(500).send('Redirect error');
         });
         return;
       }
-
-      res.status(streamRes.statusCode || 200);
-      pipeHeaders(streamRes, res);
       streamRes.pipe(res);
     }).on('error', (err) => {
-      console.error('Stream proxy error:', err);
-      if (!res.headersSent) res.status(500).send('Stream proxy failed');
+      console.error('Download proxy error:', err);
+      if (!res.headersSent) res.status(500).send('Proxy error');
     });
-
   } catch (error) {
-    console.error('Extraction error:', error);
-    if (!res.headersSent) res.status(500).send('Failed to extract stream URL');
+    console.error('Download extraction error:', error);
+    if (!res.headersSent) res.status(500).send('Failed to extract download URL');
   }
 });
 
-function pipeHeaders(sourceRes: import('http').IncomingMessage, targetRes: express.Response) {
-  const headersToForward = [
-    'content-type',
-    'content-length',
-    'accept-ranges',
-    'content-range'
-  ];
-
-  headersToForward.forEach(header => {
-    if (sourceRes.headers[header]) {
-      targetRes.setHeader(header, sourceRes.headers[header] as string);
-    }
-  });
-}
 
 // --- AllMusic Routes ---
 
-app.get('/api/allmusic/search', async (req, res) => {
-  const query = req.query.q as string;
-  const type = (req.query.type as 'artists' | 'albums' | 'songs') || 'artists';
-  const limit = (req.query.limit as string) || '10';
-  
-  if (!query) return res.status(400).send('Missing query parameter');
-  
-  const results = await allMusicService.search(query, type, limit);
-  if (results) res.json(results);
-  else res.status(500).send('AllMusic API failed');
-});
+// --- iTunes API (Free Alternative for New Releases) ---
 
-app.get('/api/allmusic/album/:id', async (req, res) => {
-  const results = await allMusicService.getAlbum(req.params.id);
-  if (results) res.json(results);
-  else res.status(500).send('AllMusic API failed');
-});
-
-app.get('/api/allmusic/artist/:id', async (req, res) => {
-  const results = await allMusicService.getArtist(req.params.id);
-  if (results) res.json(results);
-  else res.status(500).send('AllMusic API failed');
-});
-
-app.get('/api/allmusic/song/:id', async (req, res) => {
-  const results = await allMusicService.getSong(req.params.id);
-  if (results) res.json(results);
-  else res.status(500).send('AllMusic API failed');
-});
-
-app.get('/api/allmusic/releases', async (req, res) => {
-  const limit = (req.query.limit as string) || '10';
-  const results = await allMusicService.getReleases(limit);
-  if (results) res.json(results);
-  else res.status(500).send('AllMusic API failed');
+app.get('/api/releases', async (req, res) => {
+  try {
+    const limit = req.query.limit || '10';
+    const response = await fetch(`https://itunes.apple.com/us/rss/topalbums/limit=${limit}/json`);
+    
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Failed to fetch releases' });
+    }
+    
+    const data = await response.json();
+    const entries = data.feed.entry || [];
+    
+    const formattedReleases = entries.map((entry: any) => {
+      // Get the highest resolution image available in the array and try to upscale it
+      const images = entry['im:image'];
+      let coverUrl = images && images.length > 0 ? images[images.length - 1].label : '';
+      
+      // Upscale Apple Music artwork URL
+      if (coverUrl.includes('170x170bb')) {
+        coverUrl = coverUrl.replace('170x170bb', '600x600bb');
+      }
+      
+      return {
+        id: entry.id.attributes['im:id'],
+        title: entry['im:name'].label,
+        artist: entry['im:artist'].label,
+        cover_url: coverUrl,
+        rating: entry.category?.attributes?.label // Use genre as a "rating/category" tag
+      };
+    });
+    
+    res.json(formattedReleases);
+  } catch (error) {
+    console.error('iTunes API error:', error);
+    res.status(500).json({ error: 'Failed to fetch releases' });
+  }
 });
 
 // AudioDB Endpoints

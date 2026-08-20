@@ -51,7 +51,7 @@ export function ArtImage({ artist, album, className = '', type = 'album', fallba
     return () => {
       mounted = false;
     };
-  }, [artist, album]);
+  }, [artist, album, cachedUrl, cacheKey]);
 
   if (loading) {
     return (

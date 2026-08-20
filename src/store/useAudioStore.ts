@@ -9,6 +9,7 @@ interface AudioState {
   isPlaying: boolean;
   progress: number;
   duration: number;
+  seekRequest: number;
   volume: number;
   isShuffled: boolean;
   loopMode: 'off' | 'all' | 'one';
@@ -44,7 +45,7 @@ interface AudioState {
   // New Actions
   addRecentSong: (track: Track) => void;
   toggleLikedSong: (track: Track) => void;
-  createPlaylist: (name: string) => void;
+  createPlaylist: (name: string) => string;
   addTrackToPlaylist: (playlistId: string, track: Track) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
   deletePlaylist: (playlistId: string) => void;
@@ -81,6 +82,7 @@ export const useAudioStore = create<AudioState>()(
       isPlaying: false,
       progress: 0,
       duration: 0,
+      seekRequest: 0,
       volume: 1, // 0 to 1
       isShuffled: false,
       loopMode: 'off',
@@ -140,7 +142,7 @@ export const useAudioStore = create<AudioState>()(
         return { currentIndex: prevIndex, isPlaying: true };
       }),
 
-      seek: (time: number) => set({ progress: time }),
+      seek: (time: number) => set({ progress: time, seekRequest: Date.now() }),
       setVolume: (volume: number) => set({ volume }),
       
       setQueue: (tracks: Track[]) => set((state) => {
@@ -238,9 +240,13 @@ export const useAudioStore = create<AudioState>()(
         return { likedSongs: [track, ...state.likedSongs] };
       }),
 
-      createPlaylist: (name: string) => set((state) => ({
-        playlists: [...state.playlists, { id: crypto.randomUUID(), name, tracks: [], createdAt: Date.now() }]
-      })),
+      createPlaylist: (name: string) => {
+        const id = crypto.randomUUID();
+        set((state) => ({
+          playlists: [...state.playlists, { id, name, tracks: [], createdAt: Date.now() }]
+        }));
+        return id;
+      },
 
       addTrackToPlaylist: (playlistId: string, track: Track) => set((state) => ({
         playlists: state.playlists.map((p) => 
@@ -268,8 +274,11 @@ export const useAudioStore = create<AudioState>()(
     }),
     {
       name: 'auraweb-audio-storage',
-      // Only persist liked and recent songs, so local queue blob logic isn't broken on reload
-      partialize: (state) => ({ recentSongs: state.recentSongs, likedSongs: state.likedSongs }),
+      partialize: (state) => ({ 
+        recentSongs: state.recentSongs, 
+        likedSongs: state.likedSongs,
+        playlists: state.playlists
+      }),
     }
   )
 );

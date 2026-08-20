@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev:node": "nodemon --exec tsx index.ts",
-    "dev:lyrica": "cd lyrica && .\\venv\\Scripts\\python.exe run.py",
-    "dev": "concurrently \"npm run dev:node\" \"npm run dev:lyrica\"",
+    "dev": "npm run dev:node",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,6 +19,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "play-dl": "^1.9.7",
+    "soundcloud-scraper": "^5.0.3",
     "yt-dlp-exec": "^1.0.2",
     "ytmusic-api": "^5.3.1"
   },

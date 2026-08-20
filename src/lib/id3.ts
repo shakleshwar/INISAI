@@ -20,22 +20,43 @@ export function parseID3Tags(file: File): Promise<ID3Metadata> {
       onSuccess: function(tag: any) {
         const tags = tag.tags;
         
-        let coverArtUrl = undefined;
         if (tags.picture) {
-          const { data, format } = tags.picture;
-          let base64String = "";
-          for (let i = 0; i < data.length; i++) {
-            base64String += String.fromCharCode(data[i]);
+          try {
+            const { data, format } = tags.picture;
+            // Handle different variations of jsmediatags data format
+            const byteArray = new Uint8Array(data);
+            const blob = new Blob([byteArray], { type: format || 'image/jpeg' });
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                title: tags.title || fallback.title,
+                artist: tags.artist || fallback.artist,
+                album: tags.album || fallback.album,
+                coverArtUrl: reader.result as string
+              });
+            };
+            reader.onerror = () => {
+              console.error("Cover extraction failed during FileReader");
+              resolve({
+                title: tags.title || fallback.title,
+                artist: tags.artist || fallback.artist,
+                album: tags.album || fallback.album,
+                coverArtUrl: undefined
+              });
+            };
+            reader.readAsDataURL(blob);
+            return;
+          } catch (e) {
+            console.error("Cover extraction failed:", e);
           }
-          const base64 = btoa(base64String);
-          coverArtUrl = `data:${format};base64,${base64}`;
         }
 
         resolve({
           title: tags.title || fallback.title,
           artist: tags.artist || fallback.artist,
           album: tags.album || fallback.album,
-          coverArtUrl
+          coverArtUrl: undefined
         });
       },
       onError: function(error: any) {

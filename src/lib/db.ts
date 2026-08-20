@@ -56,5 +56,10 @@ export const db = {
   async clearLocalTracks() {
     await audioStore.clear();
     await metadataStore.clear();
+  },
+  
+  async removeLocalTrack(id: string) {
+    await audioStore.removeItem(id);
+    await metadataStore.removeItem(id);
   }
 };
