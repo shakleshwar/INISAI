@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'Build successful'",
+    "start": "tsx index.ts",
     "dev:node": "nodemon --exec tsx index.ts",
     "dev": "npm run dev:node",
     "test": "echo \"Error: no test specified\" && exit 1"
