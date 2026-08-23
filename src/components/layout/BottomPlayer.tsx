@@ -73,7 +73,17 @@ export function BottomPlayer() {
             
             <div className="flex flex-col overflow-hidden flex-1 justify-center min-w-0">
               <span className="text-[14px] font-semibold text-zinc-100 truncate group-hover:text-white transition-colors tracking-tight">{currentTrack.title}</span>
-              <span className="text-[12px] font-medium text-zinc-500 group-hover:text-zinc-400 transition-colors truncate mt-0.5">{currentTrack.artist}</span>
+              <span 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentTrack.artist) {
+                    navigate('/albums', { state: { artist: currentTrack.artist } });
+                  }
+                }}
+                className="text-[12px] font-medium text-zinc-500 hover:text-white hover:underline transition-colors truncate mt-0.5 cursor-pointer inline-block"
+              >
+                {currentTrack.artist}
+              </span>
             </div>
             
             <button 

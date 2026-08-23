@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Search, Disc3, LayoutGrid, Clock, Heart, Library, Plus, Music2, ListMusic, Settings, Users } from 'lucide-react';
+import { Home, Search, Disc3, Clock, Heart, Library, Plus, Music2, ListMusic, Settings, Users } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 import { CreatePlaylistModal } from '../ui/CreatePlaylistModal';
 import { PlaylistContextMenu } from '../ui/PlaylistContextMenu';

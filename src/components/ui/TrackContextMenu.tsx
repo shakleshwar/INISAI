@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Heart, PlusCircle, ListPlus, Share2, ChevronRight, Trash2, Download } from 'lucide-react';
+import { MoreVertical, Heart, PlusCircle, ListPlus, ChevronRight, Trash2, Download } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useAudioStore } from '../../store/useAudioStore';
 import type { Track } from '../../types';

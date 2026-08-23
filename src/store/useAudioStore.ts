@@ -50,7 +50,6 @@ interface AudioState {
   clonePlaylist: (id: string) => void;
   addTrackToPlaylist: (playlistId: string, track: Track) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
-  deletePlaylist: (playlistId: string) => void;
   
   // Queue Actions
   playNext: (track: Track) => void;

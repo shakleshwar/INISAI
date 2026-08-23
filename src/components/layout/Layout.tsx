@@ -1,15 +1,12 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
 import { BottomPlayer } from './BottomPlayer';
 import { MobileNav } from './MobileNav';
 import { MobilePlayer } from './MobilePlayer';
 import { SettingsModal } from '../ui/SettingsModal';
-import { ChevronLeft } from 'lucide-react';
 
 export function Layout() {
-  const location = useLocation();
-  const navigate = useNavigate();
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-surface-0)] text-zinc-100 font-sans relative">
       {/* Global Ambient Background Orbs */}

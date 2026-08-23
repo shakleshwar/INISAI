@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, Music, ArrowLeft, BadgeCheck, MoreHorizontal, Shuffle, Search, X, Heart } from 'lucide-react';
+import { Play, Pause, Music, ArrowLeft, Shuffle, Search, X, Heart } from 'lucide-react';
 import { api } from '../services/api';
 import type { AudioDBArtist, AudioDBTrack } from '../services/api';
 import { useAudioStore } from '../store/useAudioStore';
