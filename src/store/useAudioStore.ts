@@ -46,6 +46,8 @@ interface AudioState {
   addRecentSong: (track: Track) => void;
   toggleLikedSong: (track: Track) => void;
   createPlaylist: (name: string) => string;
+  deletePlaylist: (playlistId: string) => void;
+  clonePlaylist: (id: string) => void;
   addTrackToPlaylist: (playlistId: string, track: Track) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
   deletePlaylist: (playlistId: string) => void;
@@ -55,6 +57,7 @@ interface AudioState {
   addToQueue: (track: Track) => void;
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
+  reorderNextUp: (sourceIndex: number, destinationIndex: number) => void;
   
   // Internal actions used by AudioProvider
   _setProgress: (progress: number) => void;
@@ -210,6 +213,34 @@ export const useAudioStore = create<AudioState>()(
         };
       }),
       
+      reorderNextUp: (sourceIndex: number, destinationIndex: number) => set((state) => {
+        if (state.isShuffled) {
+          const newShuffleOrder = [...state.shuffleOrder];
+          const currentPos = newShuffleOrder.indexOf(state.currentIndex);
+          if (currentPos < 0) return state;
+          
+          const actualSource = currentPos + 1 + sourceIndex;
+          const actualDest = currentPos + 1 + destinationIndex;
+          
+          if (actualSource < newShuffleOrder.length && actualDest < newShuffleOrder.length) {
+            const [removed] = newShuffleOrder.splice(actualSource, 1);
+            newShuffleOrder.splice(actualDest, 0, removed);
+            return { shuffleOrder: newShuffleOrder };
+          }
+        } else {
+          const newQueue = [...state.queue];
+          const actualSource = state.currentIndex + 1 + sourceIndex;
+          const actualDest = state.currentIndex + 1 + destinationIndex;
+          
+          if (actualSource < newQueue.length && actualDest < newQueue.length) {
+            const [removed] = newQueue.splice(actualSource, 1);
+            newQueue.splice(actualDest, 0, removed);
+            return { queue: newQueue };
+          }
+        }
+        return state;
+      }),
+      
       playTrack: (index: number) => set((state) => {
         const shuffleOrder = state.isShuffled ? generateShuffleOrder(state.queue.length, index) : state.shuffleOrder;
         return { currentIndex: index, shuffleOrder, isPlaying: true };
@@ -246,6 +277,17 @@ export const useAudioStore = create<AudioState>()(
           playlists: [...state.playlists, { id, name, tracks: [], createdAt: Date.now() }]
         }));
         return id;
+      },
+
+
+      clonePlaylist: (id: string) => {
+        set((state) => {
+          const playlistToClone = state.playlists.find(p => p.id === id);
+          if (!playlistToClone) return state;
+          const newId = crypto.randomUUID();
+          const cloned = { ...playlistToClone, id: newId, name: `${playlistToClone.name} (Copy)`, createdAt: Date.now() };
+          return { playlists: [...state.playlists, cloned] };
+        });
       },
 
       addTrackToPlaylist: (playlistId: string, track: Track) => set((state) => ({

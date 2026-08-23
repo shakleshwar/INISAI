@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Search, HardDrive, Settings } from 'lucide-react';
+import { Home, Search, Library, Settings, Users } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 
 export function MobileNav() {
@@ -7,8 +7,9 @@ export function MobileNav() {
   
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
+    { to: '/albums', icon: Users, label: 'Artist' },
     { to: '/library', icon: Search, label: 'Search' },
-    { to: '/local', icon: HardDrive, label: 'Local' },
+    { to: '/local', icon: Library, label: 'Library' },
   ];
 
   return (

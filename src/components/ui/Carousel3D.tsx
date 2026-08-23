@@ -67,7 +67,7 @@ export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
       onMouseLeave={handleDragEnd}
     >
       {/* Background ambient glow */}
-      <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-purple-900/5 to-transparent blur-3xl -z-10" />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent blur-[100px] -z-10" />
       
       {items.map((item, index) => {
         const n = items.length;
@@ -85,7 +85,7 @@ export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
         // CSS properties for 3D effect (similar to coverflow)
         const zIndex = 50 - absOffset;
         const translateX = offset * 180; // Distance between items
-        const translateZ = isActive ? 100 : -150 - (absOffset * 50);
+        const translateZ = isActive ? 120 : -150 - (absOffset * 50);
         const rotateY = isActive ? 0 : -direction * 35;
         const scale = isActive ? 1 : 0.85 - (absOffset * 0.05);
         const opacity = isActive ? 1 : Math.max(1 - absOffset * 0.25, 0);
@@ -93,7 +93,7 @@ export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
         return (
           <div
             key={item.id + index}
-            className={`absolute transition-all duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] cursor-pointer group rounded-2xl ${isActive ? 'shadow-[0_20px_50px_rgba(0,0,0,0.8)] shadow-blue-500/10' : 'shadow-xl'}`}
+            className={`absolute transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group rounded-2xl ${isActive ? 'shadow-[0_24px_64px_rgba(0,0,0,0.8)] shadow-white/10' : 'shadow-xl'}`}
             style={{
               transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
               zIndex,
@@ -106,35 +106,35 @@ export function Carousel3D({ items, onPlay, onClick }: Carousel3DProps) {
             }}
           >
             {/* Card Content */}
-            <div className={`w-[260px] h-[340px] bg-[#0a0a0f] rounded-2xl overflow-hidden relative border ${isActive ? 'border-white/10' : 'border-white/5'} flex flex-col`}>
+            <div className={`w-[260px] h-[340px] bg-[#030304]/80 backdrop-blur-xl rounded-2xl overflow-hidden relative border ${isActive ? 'border-white/[0.12]' : 'border-white/[0.04]'} flex flex-col`}>
               {/* Cover Art */}
               <div className="h-[260px] w-full bg-zinc-900 shrink-0 relative overflow-hidden [transform:translateZ(0)] rounded-t-2xl">
                 <ArtImage 
                   artist={item.artist} 
                   album={item.title} 
                   type="album" 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent opacity-80" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#030304] to-transparent opacity-90" />
               </div>
               
               {/* Track Info (Overlay bottom) */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 pt-8 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f] to-transparent">
-                <h3 className={`font-black text-xl truncate ${isActive ? 'text-white' : 'text-zinc-300'}`}>{item.title}</h3>
-                <p className="text-zinc-400 text-sm truncate mt-1">{item.artist}</p>
+              <div className="absolute bottom-0 left-0 right-0 p-5 pt-8 bg-gradient-to-t from-[#030304] via-[#030304]/90 to-transparent">
+                <h3 className={`font-black text-[22px] tracking-tight truncate ${isActive ? 'text-white' : 'text-zinc-300'}`}>{item.title}</h3>
+                <p className="text-zinc-400 text-[13px] font-medium truncate mt-0.5">{item.artist}</p>
                 
-                {/* Custom Play Button (like reference 1) */}
+                {/* Custom Play Button */}
                 {isActive && (
                   <div className="flex items-center gap-4 mt-4">
                     <button 
                       onClick={(e) => { e.stopPropagation(); onPlay(item); }}
-                      className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-black hover:scale-110 transition-transform shadow-lg shadow-white/20"
+                      className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-black hover:scale-110 active:scale-95 transition-transform shadow-[0_8px_24px_rgba(255,255,255,0.3)]"
                     >
                       <Play size={20} fill="currentColor" className="ml-1" />
                     </button>
-                    {/* Decorative timeline (from image 1) */}
-                    <div className="flex-1 h-1 bg-white/20 rounded-full relative overflow-hidden">
-                      <div className="absolute top-0 left-0 h-full w-1/3 bg-white rounded-full" />
+                    {/* Decorative timeline */}
+                    <div className="flex-1 h-1.5 bg-white/[0.06] rounded-full relative overflow-hidden">
+                      <div className="absolute top-0 left-0 h-full w-1/3 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
                     </div>
                   </div>
                 )}

@@ -255,6 +255,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       <div className="hidden pointer-events-none opacity-0 w-0 h-0 absolute overflow-hidden">
         {useYTPlayer && currentTrack?.videoId && (
           <YouTube
+            key={currentTrack.videoId}
             videoId={currentTrack.videoId}
             opts={{
               height: '10',

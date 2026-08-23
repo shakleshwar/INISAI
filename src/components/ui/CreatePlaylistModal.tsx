@@ -32,36 +32,36 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+        className="absolute inset-0 bg-[#030304]/80 backdrop-blur-md transition-opacity animate-fade-in" 
         onClick={onClose}
       />
       
       {/* Modal */}
       <div 
-        className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md glass-surface-elevated rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-white/10" />
         
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                <Music2 size={16} className="text-white" />
+        <div className="p-7">
+          <div className="flex items-center justify-between mb-7">
+            <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                <Music2 size={18} className="text-white" />
               </div>
               Create Playlist
             </h2>
             <button 
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+              className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors active:scale-90"
             >
               <X size={20} />
             </button>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label htmlFor="playlist-name" className="block text-sm font-medium text-zinc-400 mb-2">
+            <div className="mb-8">
+              <label htmlFor="playlist-name" className="block text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-3">
                 Playlist Name
               </label>
               <input
@@ -70,7 +70,7 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Awesome Mix..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-xl px-5 py-4 text-[15px] font-bold text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]"
                 autoFocus
               />
             </div>
@@ -79,14 +79,14 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 text-sm font-bold text-zinc-400 hover:text-white transition-colors"
+                className="px-6 py-3 text-[13px] font-bold text-zinc-400 hover:text-white hover:bg-white/[0.04] rounded-xl transition-colors active:scale-95"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!name.trim()}
-                className="px-5 py-2.5 bg-white text-black text-sm font-bold rounded-xl hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-3 bg-white text-zinc-950 text-[13px] font-black uppercase tracking-wider rounded-xl hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_4px_16px_rgba(255,255,255,0.2)] active:scale-95"
               >
                 Create
               </button>

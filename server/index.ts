@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import YTMusic from 'ytmusic-api';
+import play from 'play-dl';
 import * as cheerio from 'cheerio';
 import ytDlp from 'yt-dlp-exec';
 import https from 'https';
@@ -20,16 +20,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const ytmusic = new YTMusic();
-
-// Initialize YTMusic API
-ytmusic.initialize().then(() => {
-  console.log('YTMusic API Initialized');
-}).catch(err => {
-  console.error('Failed to initialize YTMusic API:', err);
-});
-
-// Search Route
 // Search Route
 app.get('/api/search', async (req, res) => {
   const query = req.query.q as string;
@@ -39,14 +29,14 @@ app.get('/api/search', async (req, res) => {
   }
 
   try {
-    const ytResults = await ytmusic.searchSongs(query);
-    const validTracks = ytResults.map((song: any) => ({
-      id: song.videoId,
-      videoId: song.videoId,
-      title: song.name,
-      artist: song.artist.name,
-      duration: song.duration,
-      coverArtUrl: song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || '',
+    const results = await play.search(query, { limit: 20, source: { youtube: 'video' } });
+    const validTracks = results.map((song: any) => ({
+      id: song.id,
+      videoId: song.id,
+      title: song.title || query,
+      artist: song.channel?.name || 'Unknown Artist',
+      duration: song.durationInSec || 0,
+      coverArtUrl: song.thumbnails?.length ? song.thumbnails[song.thumbnails.length - 1].url : '',
       source: 'online'
     }));
 
@@ -57,7 +47,6 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-
 // Suggestion Route
 app.get('/api/suggest', async (req, res) => {
   const query = req.query.q as string;
@@ -65,18 +54,18 @@ app.get('/api/suggest', async (req, res) => {
     return res.json([]);
   }
   try {
-    const suggestions = await ytmusic.getSearchSuggestions(query);
-    // suggestions is usually an array of strings or objects, ytmusic-api returns an array of strings or objects
-    const results = Array.isArray(suggestions) 
-      ? suggestions.map(s => typeof s === 'string' ? s : s.query || s.title || '') 
-      : [];
-    res.json(results.filter(Boolean));
+    const response = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      const data = await response.json();
+      const suggestions = Array.isArray(data[1]) ? data[1] : [];
+      return res.json(suggestions);
+    }
+    res.json([]);
   } catch (error) {
     console.error('Suggest error:', error);
     res.json([]);
   }
 });
-
 
 // Related Tracks Route
 app.get('/api/related', async (req, res) => {
@@ -84,8 +73,6 @@ app.get('/api/related', async (req, res) => {
   if (!id) return res.json([]);
   
   try {
-    // Currently fallback to basic search based on id or empty array if ytmusic has no direct related endpoint
-    // Actually ytmusic has getUpNext(id) or similar, but let's just return empty array for now or use search
     res.json([]);
   } catch (err) {
     console.error('Related error:', err);
@@ -101,7 +88,6 @@ app.get('/api/trending', async (req, res) => {
     let url = 'https://kworb.net/ww/';
     if (region !== 'Global') {
       const code = region.toLowerCase();
-      // map 'uk' to 'gb' as kworb uses 'gb' for UK
       const kworbCode = code === 'uk' ? 'gb' : code;
       url = `https://kworb.net/charts/itunes/${kworbCode}.html`;
     }
@@ -116,10 +102,8 @@ app.get('/api/trending', async (req, res) => {
     const kworbTracks: { title: string, artist: string }[] = [];
     
     $('table tbody tr').each((i, el) => {
-      if (i >= 20) return; // Limit to Top 20 to avoid rate limiting YT Music searches
-      // text is inside td.mp.text
+      if (i >= 15) return; // Limit to Top 15 for fast response
       const text = $(el).find('td.mp.text div').text() || $(el).find('td.mp.text').text();
-      // Text is usually "Artist - Title" or "Artist & Artist - Title"
       const parts = text.split(' - ');
       if (parts.length >= 2) {
         const artist = parts[0].trim();
@@ -130,21 +114,21 @@ app.get('/api/trending', async (req, res) => {
       }
     });
 
-    // 2. Resolve YouTube Video IDs for these tracks in parallel
+    // Resolve YouTube Video IDs for these tracks in parallel using play-dl
     const trendingTracks: any[] = [];
     
     await Promise.all(kworbTracks.map(async (track, index) => {
       try {
-        const searchResults = await ytmusic.searchSongs(`${track.artist} ${track.title}`);
-        if (searchResults && searchResults.length > 0) {
-          const song = searchResults[0];
+        const results = await play.search(`${track.artist} ${track.title}`, { limit: 1, source: { youtube: 'video' } });
+        if (results && results.length > 0) {
+          const song = results[0];
           trendingTracks[index] = {
-            id: song.videoId,
-            videoId: song.videoId,
-            title: track.title, // keep the original title from Kworb if preferred, or song.name
-            artist: track.artist,
-            duration: song.duration,
-            coverArtUrl: song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || '',
+            id: song.id,
+            videoId: song.id,
+            title: track.title || song.title,
+            artist: track.artist || song.channel?.name || 'Unknown',
+            duration: song.durationInSec || 0,
+            coverArtUrl: song.thumbnails?.length ? song.thumbnails[song.thumbnails.length - 1].url : '',
             source: 'online'
           };
         }
@@ -153,13 +137,10 @@ app.get('/api/trending', async (req, res) => {
       }
     }));
 
-    // Filter out any undefined elements (failed searches)
     const validTracks = trendingTracks.filter(t => t !== undefined);
-    
-    // Remove duplicates based on videoId
     const uniqueTracks = Array.from(new Map(validTracks.map(t => [t.videoId, t])).values());
     res.json(uniqueTracks);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Trending error:', error);
     res.status(500).send('Failed to fetch trending: ' + error.message);
   }

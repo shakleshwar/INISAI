@@ -3,6 +3,7 @@ import { useAudioStore } from '../../store/useAudioStore';
 import { useState } from 'react';
 import { LyricsView } from '../audio/LyricsView';
 import { QueueView } from '../audio/QueueView';
+import { createPortal } from 'react-dom';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -25,157 +26,213 @@ export function BottomPlayer() {
 
   if (!currentTrack) {
     return (
-      <div className="hidden md:flex relative z-50 shrink-0 w-full h-[90px] bg-[#050505] border-t border-white/[0.05] items-center justify-center">
-        <div className="flex items-center gap-4 px-6 py-2.5 rounded-full bg-white/[0.02] border border-white/5 opacity-80 hover:opacity-100 transition-opacity">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-blue-500/20 blur-md rounded-full animate-pulse" />
-            <Music size={14} className="text-blue-400 relative z-10" />
+      <div className="hidden md:flex relative z-50 shrink-0 w-full h-[96px] glass-surface-elevated items-center justify-center">
+        <div className="flex items-center gap-4 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] opacity-70">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center relative">
+            <Music size={16} className="text-white relative z-10" />
           </div>
-          <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Select a track to start playing</span>
+          <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.18em]">Select a track to start playing</span>
         </div>
       </div>
     );
   }
 
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
-
   const percentage = duration ? (progress / duration) * 100 : 0;
   const volumePercentage = volume * 100;
 
   return (
-    <div className="hidden md:block relative z-50 shrink-0 w-full bg-[#050505] border-t border-white/[0.05]">
-      <div className="h-[90px] flex items-center justify-between px-6">
-        {/* Left: Track Info */}
-        <div className="flex items-center gap-4 w-[30%] min-w-[220px]">
-          {currentTrack.coverArtUrl ? (
-            <img src={currentTrack.coverArtUrl} alt="Cover" className="w-14 h-14 rounded-md object-cover shadow-lg border border-white/5" />
-          ) : (
-            <div className="w-14 h-14 rounded-md bg-zinc-900 border border-white/5 flex items-center justify-center shadow-lg">
-              <Music size={20} className="text-zinc-600" />
-            </div>
-          )}
-          <div className="flex flex-col overflow-hidden max-w-[200px]">
-            <span className="text-sm font-bold text-white truncate">{currentTrack.title}</span>
-            <span className="text-xs font-medium text-zinc-500 hover:text-white transition-colors cursor-pointer truncate mt-1">{currentTrack.artist}</span>
-          </div>
-          <Heart 
-            size={18} 
-            className={`transition-colors cursor-pointer shrink-0 ml-4 ${(likedSongs || []).some(t => t.id === currentTrack.id) ? 'text-blue-500 fill-blue-500 hover:text-blue-400' : 'text-zinc-600 hover:text-white'}`} 
-            onClick={() => toggleLikedSong(currentTrack)}
+    <div className="hidden md:block relative z-50 shrink-0 w-full glass-surface-elevated transition-all duration-300">
+      
+      {/* Background artwork leak (subtle blur behind player) */}
+      {currentTrack.coverArtUrl && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 saturate-150">
+          <div 
+            className="absolute -inset-20 bg-cover bg-center blur-[60px]"
+            style={{ backgroundImage: `url(${currentTrack.coverArtUrl})` }}
           />
         </div>
+      )}
 
-        {/* Center: Controls + Seekbar (Image 3 layout) */}
-        <div className="flex flex-col items-center justify-center flex-1 max-w-[700px] gap-3">
-          <div className="flex items-center gap-8">
+      <div className="h-[96px] flex items-center justify-between px-8 relative z-10">
+        
+        {/* Left: Track Info */}
+        <div className="flex items-center w-[30%] min-w-[240px] max-w-[400px]">
+          <div className="flex items-center gap-4 group cursor-pointer w-full pr-4 rounded-2xl hover:bg-white/[0.02] transition-colors p-1.5 -ml-1.5">
+            <div className="relative shrink-0 w-[60px] h-[60px] rounded-xl bg-zinc-900 overflow-hidden shadow-md border border-white/[0.06] group-hover:border-white/10 transition-colors">
+              {currentTrack.coverArtUrl ? (
+                <img src={currentTrack.coverArtUrl} alt="Cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Music size={20} className="text-zinc-600" /></div>
+              )}
+              {/* Image inner glare */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10 pointer-events-none" />
+            </div>
+            
+            <div className="flex flex-col overflow-hidden flex-1 justify-center min-w-0">
+              <span className="text-[14px] font-semibold text-zinc-100 truncate group-hover:text-white transition-colors tracking-tight">{currentTrack.title}</span>
+              <span className="text-[12px] font-medium text-zinc-500 group-hover:text-zinc-400 transition-colors truncate mt-0.5">{currentTrack.artist}</span>
+            </div>
+            
+            <button 
+              className={`p-2.5 rounded-full transition-all duration-300 shrink-0 ${
+                (likedSongs || []).some(t => t.id === currentTrack.id) 
+                  ? 'text-white bg-white/10' 
+                  : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04]'
+              }`} 
+              onClick={(e) => { e.stopPropagation(); toggleLikedSong(currentTrack); }}
+            >
+              <Heart size={18} className={(likedSongs || []).some(t => t.id === currentTrack.id) ? 'fill-white' : ''} />
+            </button>
+          </div>
+        </div>
+
+        {/* Center: Controls + Seekbar */}
+        <div className="flex flex-col items-center justify-center flex-1 max-w-[700px] gap-2 px-8">
+          
+          <div className="flex items-center gap-6">
             <button 
               onClick={toggleShuffle} 
-              className={`p-1.5 transition-colors ${isShuffled ? 'text-blue-500' : 'text-zinc-600 hover:text-white'}`}
+              className={`p-2 rounded-full transition-all duration-300 ${isShuffled ? 'text-white relative after:content-[""] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
             >
               <Shuffle size={18} />
             </button>
             
-            <button onClick={prev} className="text-zinc-400 hover:text-white transition-colors p-2 active:scale-95">
-              <SkipBack size={22} fill="currentColor" />
-            </button>
-            
-            <button 
-              onClick={togglePlay} 
-              className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-black hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95"
-            >
-              {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
-            </button>
-            
-            <button onClick={next} className="text-zinc-400 hover:text-white transition-colors p-2 active:scale-95">
-              <SkipForward size={22} fill="currentColor" />
-            </button>
+            <div className="flex items-center gap-4">
+              <button onClick={prev} className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all duration-300 active:scale-95">
+                <SkipBack size={20} fill="currentColor" />
+              </button>
+              
+              <button 
+                onClick={togglePlay} 
+                className="group relative w-12 h-12 rounded-full flex items-center justify-center text-white bg-transparent hover:bg-white/5 hover:scale-105 active:scale-[0.97] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_0_24px_rgba(255,255,255,0.25)] hover:shadow-[0_0_32px_rgba(255,255,255,0.35)]"
+              >
+                {/* Micro-interaction on hover */}
+                <div className="absolute inset-0 rounded-full border border-white opacity-0 group-hover:opacity-100 scale-110 group-hover:scale-125 transition-all duration-500 pointer-events-none" />
+                {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
+              </button>
+              
+              <button onClick={next} className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all duration-300 active:scale-95">
+                <SkipForward size={20} fill="currentColor" />
+              </button>
+            </div>
 
             <button 
               onClick={toggleLoop} 
-              className={`p-1.5 transition-colors ${loopMode !== 'off' ? 'text-blue-500' : 'text-zinc-600 hover:text-white'}`}
+              className={`p-2 rounded-full transition-all duration-300 ${loopMode !== 'off' ? 'text-white relative after:content-[""] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
             >
               {loopMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
             </button>
           </div>
           
-          <div className="flex items-center gap-4 w-full text-[12px] font-medium text-zinc-500">
-            <span className="w-10 text-right">{formatTime(progress)}</span>
-            <div className="flex-1 relative h-1.5 group cursor-pointer flex items-center">
+          <div className="flex items-center gap-4 w-full group">
+            <span className="w-10 text-right text-[11px] font-mono-nums font-semibold text-zinc-500 tracking-wider">
+              {formatTime(progress)}
+            </span>
+            
+            <div className="flex-1 relative h-6 cursor-pointer flex items-center touch-none">
+              {/* The invisible range input with larger hit area */}
               <input 
                 type="range" 
                 min={0} 
                 max={duration || 100} 
                 value={progress}
                 onChange={(e) => seek(Number(e.target.value))}
-                className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
               />
-              {/* Custom Glowing Track */}
-              <div className="absolute left-0 right-0 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                <div 
-                  className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-              {/* Glow effect */}
+              
+              {/* Background Track */}
+              <div className="absolute left-0 right-0 h-1 bg-white/[0.06] rounded-full overflow-hidden transition-all duration-300 group-hover:h-1.5 group-hover:bg-white/[0.08]" />
+              
+              {/* Filled Track */}
               <div 
-                className="absolute top-1/2 -translate-y-1/2 h-1 bg-blue-500 blur-sm rounded-full"
-                style={{ width: `${percentage}%`, opacity: isPlaying ? 0.8 : 0.4 }}
+                className="absolute left-0 h-1 bg-white rounded-full pointer-events-none transition-all duration-300 group-hover:h-1.5"
+                style={{ width: `${percentage}%` }}
+              />
+              
+              {/* Outer Glow on Fill */}
+              <div 
+                className="absolute left-0 h-1 bg-white blur-sm rounded-full pointer-events-none opacity-0 group-hover:opacity-20 transition-opacity duration-300"
+                style={{ width: `${percentage}%` }}
+              />
+              
+              {/* Draggable Knob (visible on hover) */}
+              <div 
+                className="absolute h-3 w-3 bg-white rounded-full shadow-md pointer-events-none opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 ease-out -ml-1.5"
+                style={{ left: `${percentage}%` }}
               />
             </div>
-            <span className="w-10 text-left">{formatTime(duration)}</span>
+            
+            <span className="w-10 text-left text-[11px] font-mono-nums font-semibold text-zinc-500 tracking-wider">
+              {formatTime(duration)}
+            </span>
           </div>
         </div>
 
-        {/* Right: Volume */}
-        <div className="flex items-center justify-end gap-4 w-[30%] min-w-[220px]">
-                    <button 
+        {/* Right: Volume & Tools */}
+        <div className="flex items-center justify-end gap-3 w-[30%] min-w-[240px]">
+          <button 
             onClick={() => {
               if (!currentTrack) return;
               const downloadUrl = `/api/download/${currentTrack.id}?title=${encodeURIComponent(currentTrack.title)}`;
               window.open(downloadUrl, '_blank');
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border border-transparent text-zinc-400 hover:text-white hover:bg-white/5"
-            title="Download FLAC/MP3 (SpotiFLAC Engine)"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-white hover:bg-white/[0.04] transition-all duration-300 active:scale-95"
+            title="Download FLAC/MP3"
           >
-            <Download className="w-4 h-4" />
+            <Download size={16} />
           </button>
+          
           <button 
             onClick={() => setShowLyrics(!showLyrics)}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 border ${showLyrics ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/5'}`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 active:scale-[0.97] border ${showLyrics ? 'bg-white/10 text-white border-white/20' : 'bg-white/[0.02] border-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.08]'}`}
             title="Lyrics"
           >
-            <Mic2 className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest">Lyrics</span>
+            <Mic2 size={14} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Lyrics</span>
           </button>
+          
           <button 
             onClick={() => { setShowQueue(!showQueue); setShowLyrics(false); }}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 border ${showQueue ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 border-blue-500/30' : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/5'}`}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-95 border ${showQueue ? 'bg-white/10 text-white border-white/20' : 'bg-transparent border-transparent text-zinc-500 hover:text-white hover:bg-white/[0.04]'}`}
             title="Queue"
           >
-            <ListMusic className="w-4 h-4" />
+            <ListMusic size={16} />
           </button>
-          <div className="flex items-center gap-2 w-32 group">
+          
+          {/* Volume Control */}
+          <div className="flex items-center gap-2 w-28 group relative pl-2">
             <button 
               onClick={() => setVolume(volume === 0 ? 1 : 0)} 
-              className="text-zinc-400 hover:text-white transition-colors p-1"
+              className="text-zinc-500 hover:text-white transition-colors p-1"
             >
-              <VolumeIcon size={18} />
+              <VolumeIcon size={16} />
             </button>
-            <input 
-              type="range" 
-              min={0} 
-              max={1} 
-              step={0.01}
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="flex-1 opacity-70 group-hover:opacity-100 transition-opacity"
-              style={{ background: `linear-gradient(to right, #ffffff 0%, #ffffff ${volumePercentage}%, rgba(255,255,255,0.1) ${volumePercentage}%)` }}
-            />
+            <div className="flex-1 relative h-6 cursor-pointer flex items-center">
+              <input 
+                type="range" 
+                min={0} 
+                max={1} 
+                step={0.01}
+                value={volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+              />
+              <div className="absolute left-0 right-0 h-1 bg-white/[0.06] rounded-full transition-all duration-300 group-hover:h-1.5 group-hover:bg-white/[0.08]" />
+              <div 
+                className="absolute left-0 h-1 bg-white/70 group-hover:bg-white rounded-full pointer-events-none transition-all duration-300 group-hover:h-1.5"
+                style={{ width: `${volumePercentage}%` }}
+              />
+              <div 
+                className="absolute h-3 w-3 bg-white rounded-full shadow-md pointer-events-none opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 ease-out -ml-1.5"
+                style={{ left: `${volumePercentage}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
-      {showLyrics && <LyricsView onClose={() => setShowLyrics(false)} />}
-      {showQueue && <QueueView onClose={() => setShowQueue(false)} />}
+      {showLyrics && createPortal(<LyricsView onClose={() => setShowLyrics(false)} />, document.body)}
+      {showQueue && createPortal(<QueueView onClose={() => setShowQueue(false)} />, document.body)}
     </div>
   );
 }

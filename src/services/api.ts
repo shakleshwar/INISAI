@@ -84,8 +84,21 @@ export const api = {
 
   async getLyricaLyrics(title: string, artist: string) {
     try {
+      // Clean title and artist to improve LRCLib match rate for YouTube tracks
+      const cleanText = (text: string) => {
+        return text
+          .replace(/\s*[\(\[].*?[\)\]]\s*/g, ' ') // Remove (Official Video), [Lyric Video], etc.
+          .replace(/\s*-?\s*official.*$/i, '') // Remove "- Official Video"
+          .replace(/\s*(feat\.|ft\.).*$/i, '') // Remove "feat." and "ft."
+          .replace(/\s*\|.*$/g, '') // Remove "|" and everything after
+          .trim();
+      };
+      
+      const cleanTitle = cleanText(title);
+      const cleanArtist = cleanText(artist);
+
       // Use LRCLib to fetch lyrics directly, bypassing the Lyrica Python backend
-      const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+      const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
       
       const response = await fetch(url);
       if (!response.ok) throw new Error('LRCLib fetch failed');
