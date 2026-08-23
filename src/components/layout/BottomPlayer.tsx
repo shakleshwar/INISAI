@@ -1,6 +1,7 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Shuffle, Repeat, Repeat1, Heart, Music, Mic2, ListMusic, Download } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LyricsView } from '../audio/LyricsView';
 import { QueueView } from '../audio/QueueView';
 import { createPortal } from 'react-dom';
@@ -13,7 +14,8 @@ function formatTime(seconds: number) {
 }
 
 export function BottomPlayer() {
-  const { 
+  const navigate = useNavigate();
+  const {  
     queue, currentIndex, isPlaying, progress, duration, volume,
     togglePlay, next, prev, seek, setVolume,
     isShuffled, loopMode, toggleShuffle, toggleLoop,

@@ -209,7 +209,9 @@ export function Home() {
                 const idx = trending.findIndex(t => t.id === item.id);
                 if (idx !== -1) handlePlayTrack(idx);
               }}
-              onClick={() => {}}
+              onClick={(item) => {
+                navigate('/albums', { state: { artist: item.artist } });
+              }}
             />
           </div>
         </section>
@@ -339,7 +341,13 @@ export function Home() {
                       <p className={`font-bold text-[15px] tracking-tight truncate transition-colors ${playing ? 'text-white' : 'text-zinc-100 group-hover:text-white'}`}>
                         {track.title}
                       </p>
-                      <p className="text-[13px] font-medium text-zinc-500 truncate mt-0.5 group-hover:text-zinc-400 transition-colors">
+                      <p 
+                        className="text-[13px] font-medium text-zinc-500 truncate mt-0.5 group-hover:text-zinc-400 transition-colors hover:underline hover:text-white cursor-pointer inline-block"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/albums', { state: { artist: track.artist } });
+                        }}
+                      >
                         {track.artist}
                       </p>
                     </div>
