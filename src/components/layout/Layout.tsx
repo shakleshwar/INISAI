@@ -5,8 +5,14 @@ import { BottomPlayer } from './BottomPlayer';
 import { MobileNav } from './MobileNav';
 import { MobilePlayer } from './MobilePlayer';
 import { SettingsModal } from '../ui/SettingsModal';
+import { useAudioStore } from '../../store/useAudioStore';
 
 export function Layout() {
+  const currentTrack = useAudioStore(state => state.queue[state.currentIndex]);
+  
+  // on mobile: if track exists, player is shown, need 180px. if not, just 100px (for nav).
+  const paddingClass = currentTrack ? 'pb-[180px] md:pb-[100px]' : 'pb-[100px] md:pb-[100px]';
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-surface-0)] text-zinc-100 font-sans relative">
       {/* Global Ambient Background Orbs */}
@@ -17,11 +23,11 @@ export function Layout() {
       <div className="flex flex-1 overflow-hidden relative z-10">
         <Sidebar />
         
-        <main className="flex-1 relative overflow-y-auto custom-scrollbar flex flex-col bg-transparent transform-gpu will-change-scroll">
+        <main className="flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-transparent transform-gpu will-change-scroll">
           {/* Top fade mask */}
           <div className="sticky top-0 z-20 h-8 bg-gradient-to-b from-[var(--color-surface-0)] to-transparent pointer-events-none shrink-0" />
           
-          <div className="flex-1 pb-[120px] -mt-8 relative z-10">
+          <div className={`flex-1 -mt-8 relative z-10 ${paddingClass}`}>
             <Outlet />
           </div>
         </main>

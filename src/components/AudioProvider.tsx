@@ -5,6 +5,10 @@ import YouTube from 'react-youtube';
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any | null>(null);
+  // Monotonically increasing ID to cancel stale async loads.
+  // When the user swipes to the next track, loadIdRef increments,
+  // causing any in-flight .play() or onReady from the OLD track to bail out.
+  const loadIdRef = useRef(0);
   
   const queue = useAudioStore((state) => state.queue);
   const currentIndex = useAudioStore((state) => state.currentIndex);
@@ -30,6 +34,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentTrack) return;
     
+    // Increment loadId so any in-flight async from the PREVIOUS track is invalidated
+    const thisLoadId = ++loadIdRef.current;
+    
     addRecentSong(currentTrack);
     
     if (!useYTPlayer) {
@@ -51,7 +58,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (isPlaying) {
-          audio.play().catch(e => console.error("Local play failed:", e));
+          audio.play().then(() => {
+            // If the user already swiped away, stop this stale playback
+            if (loadIdRef.current !== thisLoadId) {
+              audio.pause();
+            }
+          }).catch(e => {
+            // Only log if this is still the current load
+            if (loadIdRef.current === thisLoadId) {
+              console.error("Local play failed:", e);
+            }
+          });
         } else {
           audio.pause();
         }
@@ -271,9 +288,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               },
             }}
             onReady={(e) => {
+              // Capture the loadId at the moment this player was created
+              const readyLoadId = loadIdRef.current;
               ytPlayerRef.current = e.target;
               e.target.setVolume(volume * 100);
-              if (isPlaying) {
+              // Only auto-play if this is still the current track
+              if (isPlaying && loadIdRef.current === readyLoadId) {
                 e.target.playVideo();
               }
             }}

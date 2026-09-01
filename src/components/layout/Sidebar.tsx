@@ -56,7 +56,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-[260px] glass-surface hidden md:flex flex-col h-full shrink-0 border-r border-white/[0.04] z-20 relative">
+    <aside className="w-[260px] glass-surface hidden md:flex flex-col h-full shrink-0 border-r border-white/[0.04] z-20 relative pb-[96px]">
       {/* Logo */}
       <div className="px-7 pt-7 pb-8 flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-transform duration-500 hover:scale-105">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import localforage from 'localforage';
 import type { Track } from '../types';
 
 interface AudioState {
@@ -74,6 +75,32 @@ function generateShuffleOrder(length: number, currentIndex: number): number[] {
   if (currentIndex >= 0 && currentIndex < length) indices.unshift(currentIndex);
   return indices;
 }
+
+const zustandStorage = localforage.createInstance({
+  name: 'AuraWebPlayer',
+  storeName: 'zustand_store'
+});
+
+const idbStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    let val = await zustandStorage.getItem<string>(name);
+    if (!val) {
+      // Fallback to localStorage for migration of existing user data
+      val = localStorage.getItem(name);
+      if (val) {
+        await zustandStorage.setItem(name, val);
+      }
+    }
+    return val || null;
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await zustandStorage.setItem(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await zustandStorage.removeItem(name);
+    localStorage.removeItem(name);
+  }
+};
 
 export const useAudioStore = create<AudioState>()(
   persist(
@@ -315,6 +342,7 @@ export const useAudioStore = create<AudioState>()(
     }),
     {
       name: 'auraweb-audio-storage',
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({ 
         recentSongs: state.recentSongs, 
         likedSongs: state.likedSongs,

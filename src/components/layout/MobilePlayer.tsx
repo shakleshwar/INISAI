@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, Heart, Music, Mic2, ListMusic, ChevronDown } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
 import { LyricsView } from '../audio/LyricsView';
 import { QueueView } from '../audio/QueueView';
 import { MiniLyrics } from '../audio/MiniLyrics';
 import { TrackContextMenu } from '../ui/TrackContextMenu';
+import { useKeyboardOpen } from '../../hooks/useKeyboardOpen';
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -17,34 +18,119 @@ export function MobilePlayer() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const isKeyboardOpen = useKeyboardOpen();
   
-  const touchStartRef = useRef<{x: number, y: number} | null>(null);
+  // ─── Fix #1: Progress slider jitter ───
+  // Track whether the user is currently dragging the slider.
+  // While dragging, we display localProgress instead of the live progress
+  // so the knob doesn't fight with the real-time playback position.
+  const [isDragging, setIsDragging] = useState(false);
+  const [localProgress, setLocalProgress] = useState(0);
+
+  // ─── Fix #2 & #3: Swipe gesture refs ───
+  const pointerStartRef = useRef<{x: number, y: number, time: number, pointerId: number} | null>(null);
+  const hasSwiped = useRef(false);
 
   const { queue, currentIndex, isPlaying, progress, duration, togglePlay, next, prev, seek, isShuffled, loopMode, toggleShuffle, toggleLoop, likedSongs, toggleLikedSong } = useAudioStore();
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
+  // The progress value used by the slider visual — either local (dragging) or live
+  const displayProgress = isDragging ? localProgress : progress;
+
+  // ─── Swipe handlers with pointer events (works for touch & mouse) ───
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Only handle primary button (left click) or touch
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    pointerStartRef.current = { 
+      x: e.clientX, 
+      y: e.clientY,
+      time: Date.now(),
+      pointerId: e.pointerId
+    };
+    hasSwiped.current = false;
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointerStartRef.current || hasSwiped.current) return;
+
+    const diffX = e.clientX - pointerStartRef.current.x;
+    const diffY = e.clientY - pointerStartRef.current.y;
+
+    // Prevent horizontal native scroll (for track skipping)
+    if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (e.cancelable) e.preventDefault();
+    }
+    
+    // Prevent vertical native scroll ONLY if we are pulling down from the top (swipe to close)
+    const target = e.currentTarget as HTMLElement;
+    if (target.scrollTop <= 0 && diffY > 10 && Math.abs(diffY) > Math.abs(diffX) * 1.5) {
+      if (e.cancelable) e.preventDefault();
+    }
+  }, []);
   
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!pointerStartRef.current || hasSwiped.current) return;
+
+    const diffX = e.clientX - pointerStartRef.current.x;
+    const diffY = e.clientY - pointerStartRef.current.y;
+    const elapsed = Date.now() - pointerStartRef.current.time;
+
+    // Fix #2: Higher threshold (100px instead of 50px) and must be within 500ms
+    // to prevent accidental skips from slow drifts.
+    const SWIPE_THRESHOLD = 80; // slightly lower for easier swiping
+    const SWIPE_TIME_LIMIT = 500;
+
+    // Fix #4: Swipe DOWN to minimize the player
+    if (diffY > 120 && Math.abs(diffY) > Math.abs(diffX) * 1.5 && elapsed < SWIPE_TIME_LIMIT) {
+      hasSwiped.current = true;
+      setIsExpanded(false);
+      (e.target as HTMLElement).releasePointerCapture(pointerStartRef.current.pointerId);
+      pointerStartRef.current = null;
+      return;
+    }
     
-    const diffX = e.changedTouches[0].clientX - touchStartRef.current.x;
-    const diffY = e.changedTouches[0].clientY - touchStartRef.current.y;
-    
-    // Check if it's mostly a horizontal swipe and long enough
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-      if (diffX > 50) {
-        // Swipe Right -> Prev
+    // Horizontal swipe to change track
+    if (Math.abs(diffX) > Math.abs(diffY) * 1.2 && Math.abs(diffX) > SWIPE_THRESHOLD && elapsed < SWIPE_TIME_LIMIT) {
+      hasSwiped.current = true;
+      if (diffX > 0) {
         prev();
-      } else if (diffX < -50) {
-        // Swipe Left -> Next
+      } else {
         next();
       }
     }
     
-    touchStartRef.current = null;
-  };
+    (e.target as HTMLElement).releasePointerCapture(pointerStartRef.current.pointerId);
+    pointerStartRef.current = null;
+  }, [prev, next]);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    if (pointerStartRef.current) {
+      (e.target as HTMLElement).releasePointerCapture(pointerStartRef.current.pointerId);
+      pointerStartRef.current = null;
+    }
+  }, []);
+
+  // ─── Progress slider handlers (Fix #1) ───
+  const handleSliderStart = useCallback(() => {
+    setIsDragging(true);
+    setLocalProgress(progress);
+  }, [progress]);
+
+  const handleSliderChange = useCallback((value: number) => {
+    if (isDragging) {
+      setLocalProgress(value);
+    } else {
+      seek(value);
+    }
+  }, [isDragging, seek]);
+
+  const handleSliderEnd = useCallback(() => {
+    if (isDragging) {
+      seek(localProgress);
+      setIsDragging(false);
+    }
+  }, [isDragging, localProgress, seek]);
 
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
 
@@ -53,7 +139,7 @@ export function MobilePlayer() {
   if (isExpanded) {
     return (
       <>
-        <div className="md:hidden fixed inset-0 bg-[var(--color-surface-50)] z-50 flex flex-col animate-slide-up overflow-y-auto no-scrollbar pb-8">
+        <div className="md:hidden fixed inset-0 bg-[var(--color-surface-50)] z-50 flex flex-col animate-slide-up overflow-hidden">
           
           {/* Dynamic Blurred Background */}
           {currentTrack.coverArtUrl && (
@@ -68,41 +154,40 @@ export function MobilePlayer() {
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-surface-100)]/40 via-[var(--color-surface-50)]/80 to-[var(--color-surface-0)] pointer-events-none" />
 
-          {/* Top Handle for Minimize */}
-          <div className="w-full pt-4 pb-2 flex justify-center sticky top-0 z-20 cursor-pointer" onClick={() => setIsExpanded(false)}>
-            <div className="w-10 h-1 bg-white/20 hover:bg-white/40 rounded-full transition-colors shadow-sm" />
-          </div>
-
-          {/* Header */}
-          <div className="relative z-10 flex items-center justify-between px-6 pt-4 pb-4">
+          {/* Header — compact */}
+          <div className="relative z-10 flex items-center justify-between px-6 pt-3 pb-1 shrink-0">
             <button onClick={() => setIsExpanded(false)} className="text-zinc-500 hover:text-white p-2 -ml-2 transition-colors active:scale-95">
-              <ChevronDown size={28} />
+              <ChevronDown size={24} />
             </button>
             <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-zinc-500">Now Playing</span>
             <div className="flex items-center gap-4 text-zinc-500 mr-2">
               <button onClick={() => setShowLyrics(true)} className="hover:text-white transition-colors active:scale-95" title="Lyrics">
-                <Mic2 size={22} />
+                <Mic2 size={20} />
               </button>
               <button onClick={() => setShowQueue(true)} className="hover:text-white transition-colors active:scale-95" title="Queue">
-                <ListMusic size={22} />
+                <ListMusic size={20} />
               </button>
             </div>
           </div>
 
-          {/* Fixed Main Area (Swipeable without animation) */}
+          {/* ═══ Swipeable Content Area ═══ */}
           <div 
-            className="flex-1 flex flex-col w-full relative z-10 touch-pan-y select-none"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
+            className="flex-1 flex flex-col min-h-0 relative z-10 select-none"
+            style={{ touchAction: 'pan-y' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           >
-            {/* Artwork */}
-            <div className="relative z-10 flex-1 flex items-center justify-center px-8 py-4">
-              <div className="w-full max-w-[340px] aspect-square rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/[0.05] relative group">
+            {/* Artwork — fills remaining space */}
+            <div className="flex-1 min-h-0 flex items-center justify-center px-6 py-2">
+              <div className="w-full max-w-[340px] h-full max-h-[340px] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/[0.05] relative aspect-square mx-auto">
                 {currentTrack.coverArtUrl ? (
                   <img 
                     src={currentTrack.coverArtUrl} 
                     alt="Cover" 
                     className="w-full h-full object-cover pointer-events-none" 
+                    draggable={false}
                   />
                 ) : (
                   <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
@@ -113,13 +198,13 @@ export function MobilePlayer() {
               </div>
             </div>
 
-            {/* Track Info */}
-            <div className="relative z-10 px-8 mb-6 flex items-start justify-between">
-              <div className="flex flex-col overflow-hidden mr-4">
-                <span className="text-2xl font-bold text-white line-clamp-2 tracking-tight">{currentTrack.title}</span>
-                <span className="text-zinc-400 line-clamp-2 mt-1 text-[15px] font-medium">{currentTrack.artist}</span>
+            {/* Track Info — fixed height, no overlap */}
+            <div className="shrink-0 px-6 py-1 flex items-center justify-between">
+              <div className="flex flex-col overflow-hidden mr-3 min-w-0 flex-1">
+                <span className="text-xl font-bold text-white truncate tracking-tight">{currentTrack.title}</span>
+                <span className="text-zinc-400 truncate mt-0.5 text-[14px] font-medium">{currentTrack.artist}</span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <button 
                   onClick={() => toggleLikedSong(currentTrack)}
                   className={`p-2 transition-all active:scale-90 rounded-full ${
@@ -128,26 +213,50 @@ export function MobilePlayer() {
                       : 'text-zinc-500 hover:text-white hover:bg-white/[0.05]'
                   }`}
                 >
-                  <Heart size={24} className={(likedSongs || []).some(t => t.id === currentTrack.id) ? 'fill-white text-white' : ''} />
+                  <Heart size={22} className={(likedSongs || []).some(t => t.id === currentTrack.id) ? 'fill-white text-white' : ''} />
                 </button>
                 <div onClick={e => e.stopPropagation()}>
                   <TrackContextMenu track={currentTrack} />
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Progress */}
-            <div className="relative z-10 px-8 mb-8 group">
-              <div className="relative h-6 w-full flex items-center mb-1 cursor-pointer">
+          {/* ═══ MiniLyrics — sits above controls ═══ */}
+          <div className="relative z-10 shrink-0 px-6 pt-1 pb-1">
+            <MiniLyrics 
+              currentTrack={currentTrack} 
+              progress={progress} 
+              onClick={() => setShowLyrics(true)} 
+            />
+          </div>
+
+          {/* ═══ Fixed Bottom Controls: Progress + Buttons ═══ */}
+          <div className="relative z-10 shrink-0 px-6 pb-5 pt-1">
+            {/* Progress Bar */}
+            <div 
+              className="mb-2 group"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <div className="relative h-7 w-full flex items-center mb-0.5 cursor-pointer">
                 <input 
                   type="range" 
                   min={0} 
                   max={duration || 100} 
-                  value={progress || 0}
-                  onChange={(e) => seek(Number(e.target.value))}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
+                  value={displayProgress || 0}
+                  onChange={(e) => handleSliderChange(Number(e.target.value))}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    handleSliderStart();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    handleSliderEnd();
+                  }}
+                  onMouseDown={handleSliderStart}
+                  onMouseUp={handleSliderEnd}
                   className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                  style={{ touchAction: 'none' }}
                 />
                 
                 {/* Background Track */}
@@ -155,63 +264,46 @@ export function MobilePlayer() {
                 
                 {/* Filled Track */}
                 <div 
-                  className="absolute left-0 h-1.5 bg-white rounded-full transition-all duration-100 ease-linear pointer-events-none shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                  style={{ width: `${(progress / (duration || 1)) * 100}%` }}
-                />
-                
-                {/* Outer Glow */}
-                <div 
-                  className="absolute left-0 h-1.5 bg-white blur-sm rounded-full pointer-events-none opacity-40 transition-opacity duration-300"
-                  style={{ width: `${(progress / (duration || 1)) * 100}%` }}
+                  className={`absolute left-0 h-1.5 bg-white rounded-full pointer-events-none ${isDragging ? '' : 'transition-all duration-100 ease-linear'}`}
+                  style={{ width: `${(displayProgress / (duration || 1)) * 100}%` }}
                 />
                 
                 {/* Draggable Knob */}
                 <div 
-                  className="absolute w-3.5 h-3.5 bg-white rounded-full shadow-lg -ml-[7px] pointer-events-none transition-all duration-100 ease-linear scale-100"
-                  style={{ left: `${(progress / (duration || 1)) * 100}%` }}
+                  className={`absolute w-4 h-4 bg-white rounded-full shadow-lg -ml-2 pointer-events-none ${isDragging ? 'scale-125' : 'scale-100 transition-all duration-100 ease-linear'}`}
+                  style={{ left: `${(displayProgress / (duration || 1)) * 100}%` }}
                 />
               </div>
               <div className="flex justify-between text-[11px] text-zinc-500 font-mono-nums font-semibold tracking-wider">
-                <span>{formatTime(progress)}</span>
+                <span>{formatTime(displayProgress)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="relative z-10 flex flex-col px-8 mb-10">
-              <div className="flex items-center justify-between">
-                <button onClick={toggleShuffle} className={`p-2 rounded-full transition-all active:scale-95 ${isShuffled ? 'text-white bg-white/10' : 'text-zinc-500 hover:bg-white/[0.05]'}`}>
-                  <Shuffle size={22} />
-                </button>
-                
-                <button onClick={prev} className="text-zinc-300 hover:text-white p-3 active:scale-90 transition-all">
-                  <SkipBack size={32} fill="currentColor" />
-                </button>
-                
-                <button 
-                  onClick={togglePlay} 
-                  className="w-16 h-16 rounded-full bg-transparent text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                >
-                  {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
-                </button>
-                
-                <button onClick={next} className="text-zinc-300 hover:text-white p-3 active:scale-90 transition-all">
-                  <SkipForward size={32} fill="currentColor" />
-                </button>
-
-                <button onClick={toggleLoop} className={`p-2 rounded-full transition-all active:scale-95 ${loopMode !== 'off' ? 'text-white bg-white/10' : 'text-zinc-500 hover:bg-white/[0.05]'}`}>
-                  {loopMode === 'one' ? <Repeat1 size={22} /> : <Repeat size={22} />}
-                </button>
-              </div>
+            {/* Playback Controls */}
+            <div className="flex items-center justify-between">
+              <button onClick={toggleShuffle} className={`p-2 rounded-full transition-all active:scale-95 ${isShuffled ? 'text-white bg-white/10' : 'text-zinc-500 hover:bg-white/[0.05]'}`}>
+                <Shuffle size={20} />
+              </button>
               
-              {/* Bottom Controls */}
-              <div className="w-full pb-2 pt-8">
-                <MiniLyrics 
-                  currentTrack={currentTrack} 
-                  progress={progress} 
-                  onClick={() => setShowLyrics(true)} 
-                />
-              </div>
+              <button onClick={prev} className="text-zinc-300 hover:text-white p-2 active:scale-90 transition-all">
+                <SkipBack size={28} fill="currentColor" />
+              </button>
+              
+              <button 
+                onClick={togglePlay} 
+                className="w-14 h-14 rounded-full bg-transparent text-white flex items-center justify-center active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              >
+                {isPlaying ? <Pause size={26} fill="currentColor" /> : <Play size={26} fill="currentColor" className="ml-1" />}
+              </button>
+              
+              <button onClick={next} className="text-zinc-300 hover:text-white p-2 active:scale-90 transition-all">
+                <SkipForward size={28} fill="currentColor" />
+              </button>
+
+              <button onClick={toggleLoop} className={`p-2 rounded-full transition-all active:scale-95 ${loopMode !== 'off' ? 'text-white bg-white/10' : 'text-zinc-500 hover:bg-white/[0.05]'}`}>
+                {loopMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+              </button>
             </div>
           </div>
         </div>
@@ -223,12 +315,12 @@ export function MobilePlayer() {
 
   // Mini Player
   return (
-    <div className="md:hidden fixed bottom-[72px] left-2 right-2 z-40 glass-surface-elevated rounded-2xl overflow-hidden transition-all duration-300">
+    <div className={`md:hidden fixed bottom-[100px] left-2 right-2 z-40 glass-surface-elevated rounded-2xl overflow-hidden transition-all duration-300 ${isKeyboardOpen ? 'translate-y-48 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
       {/* Background artwork leak */}
       {currentTrack.coverArtUrl && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 saturate-150">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10 saturate-[1.2]">
           <div 
-            className="absolute -inset-20 bg-cover bg-center blur-[60px]"
+            className="absolute -inset-20 bg-cover bg-center blur-[40px]"
             style={{ backgroundImage: `url(${currentTrack.coverArtUrl})` }}
           />
         </div>

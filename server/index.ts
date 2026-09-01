@@ -7,12 +7,16 @@ import https from 'https';
 // @ts-ignore
 import albumArt from 'album-art';
 import dotenv from 'dotenv';
+import YTMusic from 'ytmusic-api';
 import { audioDBService } from './audiodb';
 
 dotenv.config();
 
 const app = express();
 const port = 3001;
+
+const ytmusic = new YTMusic();
+ytmusic.initialize().catch(console.error);
 
 app.use(cors());
 app.use((req, res, next) => {
@@ -42,8 +46,23 @@ app.get('/api/search', async (req, res) => {
 
     res.json(validTracks);
   } catch (error) {
-    console.error('Search error:', error);
-    res.status(500).send('Failed to fetch search results');
+    console.error('Search error with play-dl, falling back to ytmusic-api:', error);
+    try {
+      const ytResults = await ytmusic.searchSongs(query);
+      const validTracks = ytResults.map((song: any) => ({
+        id: song.videoId,
+        videoId: song.videoId,
+        title: song.name || query,
+        artist: song.artist?.name || 'Unknown Artist',
+        duration: song.duration || 0,
+        coverArtUrl: song.thumbnails?.length ? song.thumbnails[song.thumbnails.length - 1].url : '',
+        source: 'online'
+      }));
+      res.json(validTracks);
+    } catch (fallbackError) {
+      console.error('Fallback search error:', fallbackError);
+      res.status(500).send('Failed to fetch search results');
+    }
   }
 });
 

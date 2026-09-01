@@ -24,7 +24,7 @@ export function RightSidebar() {
   const nextTracks = queue.slice(currentIndex + 1, currentIndex + 11); // Show next 10
 
   return (
-    <aside className="w-[280px] bg-[var(--color-surface-50)]/80 backdrop-blur-sm hidden xl:flex flex-col h-full shrink-0 border-l border-white/[0.04] z-10 relative transition-all duration-300">
+    <aside className="w-[280px] bg-[var(--color-surface-50)]/80 backdrop-blur-sm hidden xl:flex flex-col h-full shrink-0 border-l border-white/[0.04] z-10 relative transition-all duration-300 pb-[96px]">
       <div className="px-6 py-5 flex items-center justify-between border-b border-white/[0.02]">
         <h2 className="text-[10px] font-bold tracking-[0.18em] uppercase text-zinc-500">Coming Next</h2>
         <button 

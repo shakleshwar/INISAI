@@ -244,6 +244,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         className="flex-1 overflow-y-auto px-6 pb-40 pt-10 custom-scrollbar relative flex flex-col z-10 scroll-smooth"
         onWheel={handleScroll}
         onTouchMove={handleScroll}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
       >
         <div className="max-w-4xl w-full mx-auto flex flex-col items-start gap-8 md:gap-10 md:py-20">
           {loading ? (

@@ -117,7 +117,7 @@ export function BottomPlayer() {
               
               <button 
                 onClick={togglePlay} 
-                className="group relative w-12 h-12 rounded-full flex items-center justify-center text-white bg-transparent hover:bg-white/5 hover:scale-105 active:scale-[0.97] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_0_24px_rgba(255,255,255,0.25)] hover:shadow-[0_0_32px_rgba(255,255,255,0.35)]"
+                className="group relative w-12 h-12 rounded-full flex items-center justify-center text-white bg-transparent hover:bg-white/5 hover:scale-105 active:scale-[0.97] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
               >
                 {/* Micro-interaction on hover */}
                 <div className="absolute inset-0 rounded-full border border-white opacity-0 group-hover:opacity-100 scale-110 group-hover:scale-125 transition-all duration-500 pointer-events-none" />
@@ -162,11 +162,7 @@ export function BottomPlayer() {
                 style={{ width: `${percentage}%` }}
               />
               
-              {/* Outer Glow on Fill */}
-              <div 
-                className="absolute left-0 h-1 bg-white blur-sm rounded-full pointer-events-none opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-                style={{ width: `${percentage}%` }}
-              />
+              
               
               {/* Draggable Knob (visible on hover) */}
               <div 

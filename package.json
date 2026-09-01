@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "framer-motion": "^13.1.1",
     "jsmediatags": "^3.9.7",
     "localforage": "^1.10.0",
     "lucide-react": "^1.31.0",

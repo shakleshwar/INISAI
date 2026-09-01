@@ -142,6 +142,31 @@ body {
     will-change: transform;
   }
 
+  
+  
+  /* ── Inner Active Glass Pill ── */
+  .active-glass-pill {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.08) 100%);
+    box-shadow: 
+      inset 0 1px 1px rgba(255, 255, 255, 0.1),
+      inset 0 -2px 6px rgba(255, 255, 255, 0.1),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.25),
+      0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* ── Floating Glass Nav ── */
+  .floating-glass-nav {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+    backdrop-filter: blur(48px) saturate(2);
+    -webkit-backdrop-filter: blur(48px) saturate(2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 
+      0 16px 32px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
   /* ── Liquid Glass Pill (Active Nav State) ── */
   .liquid-glass-pill {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
@@ -162,19 +187,19 @@ body {
 
   /* ── Liquid Glass Panels ── */
   .glass-surface {
-    background: rgba(255, 255, 255, 0.02);
-    backdrop-filter: blur(24px) saturate(1.2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: rgba(9, 9, 11, 0.35);
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   .glass-surface-elevated {
-    background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(32px) saturate(1.2);
-    -webkit-backdrop-filter: blur(32px) saturate(1.2);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    background: rgba(9, 9, 11, 0.45);
+    backdrop-filter: blur(48px) saturate(1.5);
+    -webkit-backdrop-filter: blur(48px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   /* ── Stagger Animation Delay ── */
