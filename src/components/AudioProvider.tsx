@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAudioStore } from '../store/useAudioStore';
+import { API_BASE } from '../services/api';
 import YouTube from 'react-youtube';
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
@@ -45,13 +46,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
           ytPlayerRef.current.pauseVideo();
         }
-      } catch (e) {}
+      } catch (_e) {}
       
       const audio = audioRef.current;
       if (audio) {
         let targetSrc = currentTrack.audioSrc || '';
         if (isOnline && engine !== 'youtube') {
-          targetSrc = '/api/stream/' + currentTrack.videoId + '?engine=' + engine + '&title=' + encodeURIComponent(currentTrack.title) + '&artist=' + encodeURIComponent(currentTrack.artist);
+          targetSrc = `${API_BASE}/api/stream/` + currentTrack.videoId + '?engine=' + engine + '&title=' + encodeURIComponent(currentTrack.title) + '&artist=' + encodeURIComponent(currentTrack.artist);
         }
         if (audio.src !== targetSrc && !audio.src.endsWith(targetSrc)) {
           audio.src = targetSrc;
@@ -86,7 +87,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             yt.pauseVideo();
           }
         }
-      } catch (e) {}
+      } catch (_e) {}
     }
   }, [currentIndex, queue, isPlaying, useYTPlayer, isOnline, engine, currentTrack, addRecentSong]);
 
@@ -134,7 +135,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             const skipTime = details.seekOffset || 10;
             state.seek(Math.min(state.duration || 100, state.progress + skipTime));
           });
-        } catch (error) {
+        } catch (_error) {
           console.warn('Warning! The "seekto", "seekbackward", "seekforward" media session action is not supported.');
         }
       } catch (e) {
@@ -159,7 +160,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               playbackRate: state.isPlaying ? 1 : 0,
               position: state.progress || 0
             });
-          } catch (e) {}
+          } catch (_e) {}
         }
       }
     });
@@ -254,7 +255,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           }
         }}
         onEnded={() => {
-          if (!isOnline) {
+          if (!useYTPlayer) {
             if (useAudioStore.getState().loopMode === 'one') {
               if (audioRef.current) {
                 audioRef.current.currentTime = 0;
@@ -264,6 +265,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               next();
             }
           }
+        }}
+        onError={(e) => {
+          console.error("Local Audio Player Error:", e);
+          pause();
         }}
         className="hidden"
       />
@@ -320,7 +325,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             }}
             onError={(e) => {
               console.error("YouTube Player Error:", e.data);
-              next(); // Skip to next track on error
+              pause(); // Stop instead of skipping to prevent rapid failure loops
             }}
           />
         )}

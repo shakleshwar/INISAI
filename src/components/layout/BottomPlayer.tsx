@@ -1,5 +1,6 @@
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Shuffle, Repeat, Repeat1, Heart, Music, Mic2, ListMusic, Download } from 'lucide-react';
 import { useAudioStore } from '../../store/useAudioStore';
+import { API_BASE } from '../../services/api';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LyricsView } from '../audio/LyricsView';
@@ -44,15 +45,16 @@ export function BottomPlayer() {
   const volumePercentage = volume * 100;
 
   return (
-    <div className="hidden md:block relative z-50 shrink-0 w-full glass-surface-elevated transition-all duration-300">
+    <div className="hidden md:block relative z-50 shrink-0 w-full bg-[var(--color-bg-panel)] border-t border-white/5 transition-all duration-300">
       
-      {/* Background artwork leak (subtle blur behind player) */}
+      {/* Background artwork leak (subtle gradient, NO BLUR) */}
       {currentTrack.coverArtUrl && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 saturate-150">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
           <div 
-            className="absolute -inset-20 bg-cover bg-center blur-[60px]"
+            className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${currentTrack.coverArtUrl})` }}
           />
+          <div className="absolute inset-0 bg-[var(--color-bg-panel)] opacity-80" />
         </div>
       )}
 
@@ -182,7 +184,7 @@ export function BottomPlayer() {
           <button 
             onClick={() => {
               if (!currentTrack) return;
-              const downloadUrl = `/api/download/${currentTrack.id}?title=${encodeURIComponent(currentTrack.title)}`;
+              const downloadUrl = `${API_BASE}/api/download/${currentTrack.id}?title=${encodeURIComponent(currentTrack.title)}`;
               window.open(downloadUrl, '_blank');
             }}
             className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-white hover:bg-white/[0.04] transition-all duration-300 active:scale-95"

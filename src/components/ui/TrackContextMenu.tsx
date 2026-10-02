@@ -3,14 +3,17 @@ import { createPortal } from 'react-dom';
 import { MoreVertical, Heart, PlusCircle, ListPlus, ChevronRight, Trash2, Download } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useAudioStore } from '../../store/useAudioStore';
+import { API_BASE } from '../../services/api';
 import type { Track } from '../../types';
 import { CreatePlaylistModal } from './CreatePlaylistModal';
 
 interface TrackContextMenuProps {
   track: Track;
+  iconSize?: number;
+  buttonClassName?: string;
 }
 
-export function TrackContextMenu({ track }: TrackContextMenuProps) {
+export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 text-zinc-500 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors md:opacity-0 group-hover:opacity-100 active:scale-90" }: TrackContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -27,10 +30,19 @@ export function TrackContextMenu({ track }: TrackContextMenuProps) {
     
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPos({ 
-        top: rect.bottom + 5, 
-        left: rect.left - 200 // Align right side roughly
-      });
+      const menuHeight = 280;
+      const menuWidth = 256;
+      
+      let top = rect.bottom + 5;
+      let left = rect.right - menuWidth; 
+      
+      if (top + menuHeight > window.innerHeight) {
+         top = rect.top - menuHeight - 5;
+      }
+      if (left < 10) left = 10;
+      if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth - 10;
+
+      setMenuPos({ top, left });
     }
     setIsOpen(true);
     setShowPlaylists(false);
@@ -121,7 +133,7 @@ export function TrackContextMenu({ track }: TrackContextMenuProps) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const downloadUrl = `/api/download/${track.id}?title=${encodeURIComponent(track.title)}`;
+                const downloadUrl = `${API_BASE}/api/download/${track.id}?title=${encodeURIComponent(track.title)}`;
                 window.open(downloadUrl, '_blank');
                 setIsOpen(false);
               }}
@@ -202,9 +214,9 @@ export function TrackContextMenu({ track }: TrackContextMenuProps) {
       <button
         ref={buttonRef}
         onClick={openMenu}
-        className="p-2 text-zinc-500 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors md:opacity-0 group-hover:opacity-100 active:scale-90"
+        className={buttonClassName}
       >
-        <MoreVertical size={20} />
+        <MoreVertical size={iconSize} />
       </button>
 
       {isOpen && createPortal(menuContent, document.body)}

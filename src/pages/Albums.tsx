@@ -93,7 +93,7 @@ export function Albums() {
  } else {
  setTrackMeta(null);
  }
- }, [activeTrack?.id, activeTrack?.artist, activeTrack?.title]);
+ }, [activeTrack]);
 
  useEffect(() => {
  if (searchQuery.trim().length > 1) {
@@ -174,7 +174,7 @@ export function Albums() {
  return (
  <div className="animate-fade-in relative">
  {/* Mobile Back Button */}
- <div className="md:hidden sticky top-0 z-50 bg-[#030304]/80 backdrop-blur-xl border-b border-white/[0.02] px-4 py-3">
+ <div className="md:hidden sticky top-0 z-50 bg-[var(--color-bg-panel)] border-b border-white/[0.02] px-4 py-3">
  <button 
  onClick={handleBack} 
  className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
@@ -184,7 +184,7 @@ export function Albums() {
  </button>
  </div>
 
- <button onClick={handleBack} className="hidden md:flex fixed top-24 left-10 z-[60] items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-zinc-300 hover:text-white text-sm font-bold transition-all border border-white/10 hover:bg-black/60 hover:scale-105 shadow-xl">
+ <button onClick={handleBack} className="hidden md:flex fixed top-24 left-10 z-[60] items-center gap-2 bg-[var(--color-bg-card)] px-4 py-2 rounded-full text-zinc-300 hover:text-white text-sm font-bold transition-all border border-white/10 hover:bg-white/10 hover:scale-105 shadow-xl">
  <ArrowLeft size={16} /> Back
  </button>
 
@@ -304,7 +304,7 @@ export function Albums() {
  {artistMeta && artistMeta.strBiographyEN && (
  <div className="mt-12 pt-10 border-t border-white/[0.06]">
  <h2 className="text-2xl font-black text-white mb-6 tracking-tight">About</h2>
- <div className="bg-[#030304]/80 backdrop-blur-xl border border-white/[0.04] rounded-3xl p-6 md:p-8 hover:bg-white/[0.02] transition-colors group">
+ <div className="bg-[var(--color-bg-card)] border border-white/[0.04] rounded-3xl p-6 md:p-8 hover:bg-white/[0.02] transition-colors group">
  {artistMeta.strArtistThumb && (
  <div className="w-full h-64 md:h-[400px] rounded-2xl overflow-hidden mb-8 shadow-2xl relative border border-white/[0.04]">
  <div className="absolute inset-0 bg-gradient-to-t from-[#030304] to-transparent z-10 opacity-90"></div>
@@ -339,7 +339,7 @@ export function Albums() {
  {/* Right Column: Track Details */}
  {activeTrack && (
  <div className="w-full lg:w-[360px] shrink-0 flex flex-col gap-6">
- <div className="bg-[#030304]/80 backdrop-blur-xl rounded-2xl p-6 border border-white/[0.04] shadow-xl animate-fade-in">
+ <div className="bg-[var(--color-bg-card)] rounded-2xl p-6 border border-white/[0.04] shadow-xl animate-fade-in">
  <div className="flex items-center justify-between mb-5">
  <h3 className="font-black text-white text-lg tracking-tight">Track Details</h3>
  </div>
@@ -477,7 +477,7 @@ export function Albums() {
               }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setShowSuggestions(false)}
-              className="block w-full pl-14 pr-12 py-5 bg-[#030304]/80 backdrop-blur-xl border border-white/[0.06] rounded-full text-[15px] font-bold text-white placeholder-zinc-500 focus:outline-none focus:bg-[#030304] focus:border-white/50 focus:scale-[1.01] transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+              className="block w-full pl-14 pr-12 py-5 bg-[var(--color-bg-panel)] border border-white/[0.06] rounded-full text-[15px] font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-white/50 focus:scale-[1.01] transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
               placeholder="Search for artists, albums, or songs..."
             />
             {searchQuery && (
@@ -493,7 +493,7 @@ export function Albums() {
 
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-3 bg-[#030304]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden animate-fade-in p-2">
+            <div className="absolute z-50 w-full mt-3 bg-[var(--color-bg-panel)] border border-white/[0.08] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden animate-fade-in p-2">
               <ul className="max-h-[300px] overflow-y-auto custom-scrollbar">
                 {suggestions.map((suggestion, idx) => (
                   <li key={idx}>

@@ -39,7 +39,7 @@ export function ArtImage({ artist, album, className = '', type = 'album', fallba
             setError(true);
           }
         }
-      } catch (err) {
+      } catch (_err) {
         if (mounted) setError(true);
       } finally {
         if (mounted) setLoading(false);

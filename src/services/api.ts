@@ -1,5 +1,12 @@
 import type { Track } from '../types';
 
+/**
+ * Base URL for all backend API calls.
+ * In local dev this is empty (Vite proxy handles it).
+ * In production, set VITE_API_URL to your backend URL (e.g. https://inisai-1-5.onrender.com).
+ */
+export const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export interface AudioDBArtist {
   idArtist: string;
   strArtist: string;
@@ -32,7 +39,7 @@ export interface AudioDBTrack {
 export const api = {
   async searchOnlineTracks(query: string): Promise<Track[]> {
     const engine = localStorage.getItem('streamingService') || 'youtube';
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${engine}`);
+    const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&engine=${engine}`);
     if (!res.ok) {
       throw new Error('Failed to fetch search results');
     }
@@ -40,7 +47,7 @@ export const api = {
   },
 
   async getSuggestions(query: string): Promise<string[]> {
-    const res = await fetch(`/api/suggest?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${API_BASE}/api/suggest?q=${encodeURIComponent(query)}`);
     if (!res.ok) {
       return [];
     }
@@ -48,7 +55,7 @@ export const api = {
   },
 
   async getRelatedTracks(videoId: string): Promise<Track[]> {
-    const res = await fetch(`/api/related?id=${encodeURIComponent(videoId)}`);
+    const res = await fetch(`${API_BASE}/api/related?id=${encodeURIComponent(videoId)}`);
     if (!res.ok) {
       return [];
     }
@@ -56,7 +63,7 @@ export const api = {
   },
 
   async getTrending(region?: string): Promise<Track[]> {
-    const url = region ? `/api/trending?region=${encodeURIComponent(region)}` : '/api/trending';
+    const url = region ? `${API_BASE}/api/trending?region=${encodeURIComponent(region)}` : `${API_BASE}/api/trending`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error('Failed to fetch trending charts');
@@ -68,7 +75,7 @@ export const api = {
     try {
       const params = new URLSearchParams({ artist });
       if (album) params.append('album', album);
-      const res = await fetch(`/api/art?${params}`);
+      const res = await fetch(`${API_BASE}/api/art?${params}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data.url;
@@ -79,7 +86,7 @@ export const api = {
   },
 
   getOnlineStreamUrl(videoId: string): string {
-    return `/api/stream/${videoId}`;
+    return `${API_BASE}/api/stream/${videoId}`;
   },
 
   async getLyricaLyrics(title: string, artist: string) {
@@ -87,7 +94,7 @@ export const api = {
       // Clean title and artist to improve LRCLib match rate for YouTube tracks
       const cleanText = (text: string) => {
         return text
-          .replace(/\s*[\(\[].*?[\)\]]\s*/g, ' ') // Remove (Official Video), [Lyric Video], etc.
+          .replace(/\s*[([].*?[)\]]\s*/g, ' ') // Remove (Official Video), [Lyric Video], etc.
           .replace(/\s*-?\s*official.*$/i, '') // Remove "- Official Video"
           .replace(/\s*(feat\.|ft\.).*$/i, '') // Remove "feat." and "ft."
           .replace(/\s*\|.*$/g, '') // Remove "|" and everything after
@@ -124,7 +131,7 @@ export const api = {
   
   async getNewReleases(limit = '10') {
     try {
-      const res = await fetch(`/api/releases?limit=${limit}`);
+      const res = await fetch(`${API_BASE}/api/releases?limit=${limit}`);
       if (!res.ok) return null;
       return await res.json();
     } catch (err) {
@@ -135,7 +142,7 @@ export const api = {
 
   getAudioDBArtist: async (name: string): Promise<AudioDBArtist | null> => {
     try {
-      const response = await fetch(`/api/audiodb/artist?name=${encodeURIComponent(name)}`);
+      const response = await fetch(`${API_BASE}/api/audiodb/artist?name=${encodeURIComponent(name)}`);
       if (!response.ok) return null;
       const data = await response.json();
       return Object.keys(data).length === 0 ? null : data;
@@ -147,7 +154,7 @@ export const api = {
 
   getAudioDBTrack: async (artist: string, track: string): Promise<AudioDBTrack | null> => {
     try {
-      const response = await fetch(`/api/audiodb/track?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`);
+      const response = await fetch(`${API_BASE}/api/audiodb/track?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`);
       if (!response.ok) return null;
       const data = await response.json();
       return Object.keys(data).length === 0 ? null : data;
@@ -159,7 +166,7 @@ export const api = {
 
   getAudioDBAlbum: async (artist: string, album: string) => {
     try {
-      const response = await fetch(`/api/audiodb/album?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`);
+      const response = await fetch(`${API_BASE}/api/audiodb/album?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`);
       if (!response.ok) return null;
       const data = await response.json();
       return Object.keys(data).length === 0 ? null : data;
@@ -171,7 +178,7 @@ export const api = {
 
   getAudioDBDiscography: async (artist: string) => {
     try {
-      const response = await fetch(`/api/audiodb/discography?artist=${encodeURIComponent(artist)}`);
+      const response = await fetch(`${API_BASE}/api/audiodb/discography?artist=${encodeURIComponent(artist)}`);
       if (!response.ok) return [];
       return await response.json();
     } catch (error) {

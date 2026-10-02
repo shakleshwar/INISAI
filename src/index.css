@@ -3,7 +3,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Dark Minimalist Palette ── */
+  /* ── Dark Minimalist Palette (Primitives) ── */
   --color-surface-0: #000000;
   --color-surface-50: #050505;
   --color-surface-100: #0a0a0a;
@@ -11,7 +11,6 @@
   --color-surface-300: #1a1a1a;
   --color-surface-400: #222222;
 
-  /* ── Neutral Scale (Cool-tinted) ── */
   --color-zinc-950: #09090b;
   --color-zinc-900: #18181b;
   --color-zinc-800: #27272a;
@@ -23,9 +22,28 @@
   --color-zinc-200: #e4e4e7;
   --color-zinc-100: #f4f4f5;
 
-  /* ── Status Colors ── */
   --color-emerald-500: #10b981;
   --color-red-500: #ef4444;
+
+  /* ── Semantic Design Tokens ── */
+  --color-bg-base: var(--color-surface-0);
+  --color-bg-panel: var(--color-zinc-950);
+  --color-bg-card: var(--color-zinc-900);
+  --color-bg-hover: var(--color-zinc-800);
+  --color-bg-active: var(--color-zinc-700);
+
+  --color-text-primary: var(--color-zinc-100);
+  --color-text-secondary: var(--color-zinc-400);
+  --color-text-tertiary: var(--color-zinc-500);
+  --color-text-disabled: var(--color-zinc-600);
+
+  --color-border-subtle: var(--color-white); /* Used with low opacity e.g., border-white/5 */
+  --color-border-default: var(--color-white); /* e.g., border-white/10 */
+  --color-border-hover: var(--color-white); /* e.g., border-white/20 */
+
+  --color-accent-primary: var(--color-white);
+  --color-accent-success: var(--color-emerald-500);
+  --color-accent-error: var(--color-red-500);
 }
 
 /* ── Root Theme ── */
@@ -49,6 +67,15 @@ body {
   background: var(--color-surface-0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+}
+
+/* ── Scrollbar hide utility ── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 /* Enforce hardware acceleration on scroll containers to prevent text wiggle */

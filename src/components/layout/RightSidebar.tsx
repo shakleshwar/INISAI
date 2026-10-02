@@ -8,7 +8,7 @@ export function RightSidebar() {
 
   if (!isOpen) {
     return (
-      <div className="w-14 border-l border-white/[0.04] bg-[var(--color-surface-50)]/80 backdrop-blur-sm flex flex-col items-center py-6 hidden xl:flex shrink-0 transition-all duration-300">
+      <div className="w-14 border-l border-white/[0.04] bg-[var(--color-bg-panel)] flex flex-col items-center py-6 hidden xl:flex shrink-0 transition-all duration-300">
         <button 
           onClick={() => setIsOpen(true)} 
           className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-500 hover:text-white transition-all duration-300 border border-transparent hover:border-white/[0.06] shadow-sm hover:shadow-md cursor-pointer" 
@@ -24,7 +24,7 @@ export function RightSidebar() {
   const nextTracks = queue.slice(currentIndex + 1, currentIndex + 11); // Show next 10
 
   return (
-    <aside className="w-[280px] bg-[var(--color-surface-50)]/80 backdrop-blur-sm hidden xl:flex flex-col h-full shrink-0 border-l border-white/[0.04] z-10 relative transition-all duration-300 pb-[96px]">
+    <aside className="w-[280px] bg-[var(--color-bg-panel)] hidden xl:flex flex-col h-full shrink-0 border-l border-white/[0.04] z-10 relative transition-all duration-300 pb-[96px]">
       <div className="px-6 py-5 flex items-center justify-between border-b border-white/[0.02]">
         <h2 className="text-[10px] font-bold tracking-[0.18em] uppercase text-zinc-500">Coming Next</h2>
         <button 
@@ -38,7 +38,7 @@ export function RightSidebar() {
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-6 pt-4">
         {/* Now Playing Mini Card */}
         {currentTrack && (
-          <div className="mb-6 p-4 rounded-2xl glass-surface-elevated border border-white/[0.08] relative overflow-hidden group">
+          <div className="mb-6 p-4 rounded-2xl bg-[var(--color-bg-card)] border border-white/[0.08] relative overflow-hidden group">
             {/* Dynamic blurred background based on artwork if we had it, but using a brand subtle glow instead */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
             

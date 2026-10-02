@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import play from 'play-dl';
 import * as cheerio from 'cheerio';
 import ytDlp from 'yt-dlp-exec';
@@ -13,12 +14,50 @@ import { audioDBService } from './audiodb';
 dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = parseInt(process.env.PORT || '3001', 10);
+
+// --- CORS Configuration ---
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
+// --- Rate Limiters ---
+const streamLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // 60 stream requests per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many stream requests, please try again later.',
+});
+
+const downloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // 10 downloads per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many download requests, please try again later.',
+});
+
+// --- Video ID Validation ---
+const VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{6,20}$/;
+function isValidVideoId(id: string): boolean {
+  return VIDEO_ID_REGEX.test(id);
+}
 
 const ytmusic = new YTMusic();
 ytmusic.initialize().catch(console.error);
 
-app.use(cors());
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
@@ -209,14 +248,14 @@ app.get('/api/art', async (req, res) => {
 const streamUrlCache = new Map<string, { url: string, expiresAt: number }>();
 
 // Stream Route
-app.get('/api/stream/:id', async (req, res) => {
-  const videoId = req.params.id;
+app.get('/api/stream/:id', streamLimiter, async (req, res) => {
+  const videoId = req.params.id as string;
   const engine = req.query.engine as string;
   const title = req.query.title as string;
   const artist = req.query.artist as string;
   
-  if (!videoId) {
-    return res.status(400).send('Missing video ID');
+  if (!videoId || !isValidVideoId(videoId)) {
+    return res.status(400).send('Invalid or missing video ID');
   }
 
   try {
@@ -241,13 +280,13 @@ app.get('/api/stream/:id', async (req, res) => {
             let info = await ytDlp(ytDlpQuery, {
         dumpJson: true,
         format: 'm4a/bestaudio/best',
-        noCheckCertificates: true,
+        noCheckCertificate: true,
         noWarnings: true,
         preferFreeFormats: true,
         addHeader: [
           'referer:youtube.com',
           `user-agent:${userAgent}`
-        ]
+        ] as any
       }) as any;
       
       // Auto-fallback: if SoundCloud returns a 30-sec preview (duration <= 35), switch to YouTube
@@ -256,18 +295,18 @@ app.get('/api/stream/:id', async (req, res) => {
         info = await ytDlp(videoId, {
           dumpJson: true,
           format: 'm4a/bestaudio/best',
-          noCheckCertificates: true,
+          noCheckCertificate: true,
           noWarnings: true,
           preferFreeFormats: true,
           addHeader: [
             'referer:youtube.com',
             `user-agent:${userAgent}`
-          ]
+          ] as any
         }) as any;
       }
 
 
-      streamUrl = (engine === 'soundcloud' && info.formats) ? (info.formats.find(f => f.url && !f.url.includes('m3u8'))?.url || info.url) : info.url;
+      streamUrl = (engine === 'soundcloud' && info.formats) ? (info.formats.find((f: any) => f.url && !f.url.includes('m3u8'))?.url || info.url) : info.url;
       if (!streamUrl) {
         return res.status(404).send('Stream URL not found');
       }
@@ -314,12 +353,12 @@ app.get('/api/stream/:id', async (req, res) => {
 });
 
 
-app.get('/api/download/:id', async (req, res) => {
-  const videoId = req.params.id;
+app.get('/api/download/:id', downloadLimiter, async (req, res) => {
+  const videoId = req.params.id as string;
   const title = (req.query.title as string) || 'download';
   
-  if (!videoId) {
-    return res.status(400).send('Missing video ID');
+  if (!videoId || !isValidVideoId(videoId)) {
+    return res.status(400).send('Invalid or missing video ID');
   }
 
   try {
@@ -333,13 +372,13 @@ app.get('/api/download/:id', async (req, res) => {
       const info = await ytDlp(videoId, {
         dumpJson: true,
         format: 'm4a/bestaudio/best',
-        noCheckCertificates: true,
+        noCheckCertificate: true,
         noWarnings: true,
         preferFreeFormats: true,
         addHeader: [
           'referer:youtube.com',
           `user-agent:${userAgent}`
-        ]
+        ] as any
       }) as any;
 
       streamUrl = info.url;

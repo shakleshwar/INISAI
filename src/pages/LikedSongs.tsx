@@ -38,8 +38,7 @@ export function LikedSongs() {
  {/* Header */}
  <div className="relative overflow-hidden pt-12 md:pt-24 pb-8">
  <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent pointer-events-none"/>
- <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[120px] pointer-events-none"/>
- <div className="absolute top-20 left-10 w-[300px] h-[300px] bg-white/[0.02] rounded-full blur-[100px] pointer-events-none"/>
+
  
  <div className="relative px-6 md:px-10 flex flex-col md:flex-row items-center md:items-end gap-10 max-w-[1400px] mx-auto">
  <div className="w-56 h-56 rounded-[32px] bg-gradient-to-br from-white/10 to-transparent shadow-[0_24px_64px_rgba(255,255,255,0.1)] flex items-center justify-center shrink-0 border border-white/[0.08] transform-style-3d hover:[transform:rotateX(5deg)_rotateY(-5deg)_scale(1.02)] transition-all duration-500">

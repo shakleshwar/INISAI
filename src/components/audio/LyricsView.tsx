@@ -100,7 +100,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         if (metaResAny?.status === 'success' && metaResAny?.data) {
           setMetadata(metaResAny.data);
         }
-      } catch (err) {
+      } catch (_err) {
         setLyrics('Error loading lyrics.');
       } finally {
         setLoading(false);

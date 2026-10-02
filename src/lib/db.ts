@@ -26,7 +26,7 @@ export const db = {
     };
     
     // Don't store audioSrc in DB since it's a temporary Blob URL
-    const { audioSrc, ...metaToStore } = track;
+    const { audioSrc: _, ...metaToStore } = track;
     await metadataStore.setItem(id, metaToStore);
     
     return track;

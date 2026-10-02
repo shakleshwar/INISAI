@@ -182,8 +182,7 @@ export function Genres() {
  return (
  <div className="animate-fade-in min-h-screen bg-[#030304]">
  <div className="relative overflow-hidden pt-16 pb-12">
- <div className={`absolute inset-0 bg-gradient-to-br ${genre?.gradient || 'from-white/[0.05] to-transparent'} opacity-10 blur-[100px] pointer-events-none`} />
- <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[100px] pointer-events-none"/>
+ <div className={`absolute inset-0 bg-gradient-to-br ${genre?.gradient || 'from-white/[0.05] to-transparent'} opacity-10 pointer-events-none`} />
  
  <div className="relative px-6 md:px-10 flex flex-col md:flex-row items-center md:items-end gap-10 max-w-[1400px] mx-auto">
  <button onClick={handleBack} className="absolute top-0 left-6 md:left-10 flex items-center gap-3 text-zinc-400 hover:text-white text-sm transition-colors group">
@@ -286,8 +285,7 @@ export function Genres() {
  return (
  <div className="animate-fade-in relative overflow-hidden bg-[#030304]">
  {/* Ambient Background */}
- <div className="absolute top-0 left-1/3 w-[600px] h-[600px] bg-white/[0.02] rounded-full blur-[150px] pointer-events-none"/>
- <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[120px] pointer-events-none"/>
+
 
  {/* Hero Header */}
  <div className="relative overflow-hidden pt-12 pb-8">

@@ -15,10 +15,8 @@ export function Layout() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-surface-0)] text-zinc-100 font-sans relative">
-      {/* Global Ambient Background Orbs */}
-      <div className="absolute top-[-10%] left-[15%] w-[700px] h-[500px] bg-white/[0.02] rounded-full blur-[160px] pointer-events-none z-0" />
-      <div className="absolute bottom-[-5%] right-[10%] w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[180px] pointer-events-none z-0" />
-      <div className="absolute top-[40%] left-[50%] w-[400px] h-[300px] bg-white/[0.01] rounded-full blur-[140px] pointer-events-none z-0" />
+      {/* Clean minimal background */}
+
 
       <div className="flex flex-1 overflow-hidden relative z-10">
         <Sidebar />

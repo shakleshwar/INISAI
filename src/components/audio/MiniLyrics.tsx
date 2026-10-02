@@ -53,7 +53,7 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
         } else if (isMounted) {
           setSyncedLines([]);
         }
-      } catch (err) {
+      } catch (_err) {
         if (isMounted) setSyncedLines([]);
       } finally {
         if (isMounted) setLoading(false);
@@ -67,7 +67,7 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
   if (loading) {
     return (
       <div 
-        className="w-full h-[100px] bg-white/[0.02] rounded-2xl p-4 flex flex-col justify-center cursor-pointer border border-white/[0.04] shadow-lg relative overflow-hidden"
+        className="w-full h-[88px] bg-[var(--color-bg-card)] rounded-2xl p-4 flex flex-col justify-center cursor-pointer border border-white/[0.04] shadow-lg relative overflow-hidden"
         onClick={onClick}
       >
         <div className="w-3/4 h-5 bg-white/[0.04] rounded-md animate-pulse mb-2" />
@@ -91,30 +91,30 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
 
   return (
     <div 
-      className="w-full h-[100px] bg-white/[0.02] rounded-2xl p-4 flex flex-col justify-center cursor-pointer border border-white/[0.06] shadow-xl relative overflow-hidden transition-all duration-500 hover:border-white/[0.12] active:scale-[0.98] group"
+      className="w-full h-[88px] bg-[#030304] rounded-2xl px-4 py-3 flex flex-col justify-center cursor-pointer border border-white/[0.06] shadow-xl relative overflow-hidden transition-all duration-300 active:scale-[0.98] group"
       onClick={onClick}
     >
-      {/* Dynamic Blurred Background */}
+      {/* Premium Dynamic Background */}
       {currentTrack.coverArtUrl && (
         <>
           <div 
-            className="absolute inset-0 opacity-40 blur-2xl scale-125 mix-blend-screen"
+            className="absolute inset-0 scale-[1.5] pointer-events-none transition-all duration-1000 ease-out opacity-60 group-hover:opacity-80 group-hover:scale-[1.6]"
             style={{ 
               backgroundImage: `url(${currentTrack.coverArtUrl})`,
               backgroundPosition: 'center',
               backgroundSize: 'cover',
-              filter: 'saturate(150%) blur(30px)'
+              filter: 'blur(24px) saturate(200%) brightness(0.8)'
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#030304]/90 via-[#030304]/60 to-[#030304]/40 pointer-events-none" />
+          {/* Frosted material for readability */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-xl pointer-events-none transition-all duration-300 group-hover:bg-black/40" />
         </>
       )}
-      
-      <div className="w-full flex flex-col z-10">
-        <span className="text-xl font-bold text-white drop-shadow-md w-full tracking-normal leading-relaxed line-clamp-2">
+      <div className="w-full flex flex-col z-10 relative">
+        <span className="text-lg font-bold text-white w-full tracking-tight leading-snug line-clamp-2">
           {currentLine}
         </span>
-        <span className="text-base font-medium text-white/50 w-full mt-1.5 truncate">
+        <span className="text-sm font-medium text-white/50 w-full mt-0.5 truncate">
           {nextLine}
         </span>
       </div>

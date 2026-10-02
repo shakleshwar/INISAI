@@ -30,3 +30,8 @@ __pycache__
 *.njsproj
 *.sln
 *.sw?
+
+# Antigravity AI Skills & Agent Configs
+.agents/
+server/.runtime/
+output/
