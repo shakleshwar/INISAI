@@ -5,7 +5,7 @@ import type { Track } from '../types';
  * In local dev this is empty (Vite proxy handles it).
  * In production, set VITE_API_URL to your backend URL (e.g. https://inisai-1-5.onrender.com).
  */
-export const API_BASE = import.meta.env.VITE_API_URL || '';
+export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export interface AudioDBArtist {
   idArtist: string;
