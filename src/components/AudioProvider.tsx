@@ -46,7 +46,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
           ytPlayerRef.current.pauseVideo();
         }
-      } catch (_e) {}
+      } catch {}
       
       const audio = audioRef.current;
       if (audio) {
@@ -87,7 +87,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             yt.pauseVideo();
           }
         }
-      } catch (_e) {}
+      } catch {}
     }
   }, [currentIndex, queue, isPlaying, useYTPlayer, isOnline, engine, currentTrack, addRecentSong]);
 
@@ -135,7 +135,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             const skipTime = details.seekOffset || 10;
             state.seek(Math.min(state.duration || 100, state.progress + skipTime));
           });
-        } catch (_error) {
+        } catch {
           console.warn('Warning! The "seekto", "seekbackward", "seekforward" media session action is not supported.');
         }
       } catch (e) {
@@ -160,7 +160,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
               playbackRate: state.isPlaying ? 1 : 0,
               position: state.progress || 0
             });
-          } catch (_e) {}
+          } catch {}
         }
       }
     });

@@ -1,14 +1,16 @@
+import { lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Home } from './pages/Home';
-import { Library } from './pages/Library';
-import { LocalMusic } from './pages/LocalMusic';
-import { Genres } from './pages/Genres';
-import { Albums } from './pages/Albums';
-import { RecentSongs } from './pages/RecentSongs';
-import { LikedSongs } from './pages/LikedSongs';
-import { Playlist } from './pages/Playlist';
 import { AudioProvider } from './components/AudioProvider';
+
+const Library = lazy(() => import('./pages/Library').then(m => ({ default: m.Library })));
+const LocalMusic = lazy(() => import('./pages/LocalMusic').then(m => ({ default: m.LocalMusic })));
+const Genres = lazy(() => import('./pages/Genres').then(m => ({ default: m.Genres })));
+const Albums = lazy(() => import('./pages/Albums').then(m => ({ default: m.Albums })));
+const RecentSongs = lazy(() => import('./pages/RecentSongs').then(m => ({ default: m.RecentSongs })));
+const LikedSongs = lazy(() => import('./pages/LikedSongs').then(m => ({ default: m.LikedSongs })));
+const Playlist = lazy(() => import('./pages/Playlist').then(m => ({ default: m.Playlist })));
 
 function App() {
   return (

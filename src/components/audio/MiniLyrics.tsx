@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Track } from '../../types';
 
@@ -53,7 +54,7 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
         } else if (isMounted) {
           setSyncedLines([]);
         }
-      } catch (_err) {
+      } catch {
         if (isMounted) setSyncedLines([]);
       } finally {
         if (isMounted) setLoading(false);
@@ -67,11 +68,11 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
   if (loading) {
     return (
       <div 
-        className="w-full h-[88px] bg-[var(--color-bg-card)] rounded-2xl p-4 flex flex-col justify-center cursor-pointer border border-white/[0.04] shadow-lg relative overflow-hidden"
+        className="w-full h-[64px] bg-white/[0.03] rounded-2xl px-4 py-3 flex flex-col justify-center cursor-pointer border border-white/[0.06] shadow-lg relative overflow-hidden backdrop-blur-xl"
         onClick={onClick}
       >
-        <div className="w-3/4 h-5 bg-white/[0.04] rounded-md animate-pulse mb-2" />
-        <div className="w-1/2 h-4 bg-white/[0.02] rounded-md animate-pulse" />
+        <div className="w-3/4 h-4 bg-white/[0.05] rounded-md animate-pulse mb-1.5" />
+        <div className="w-1/2 h-3 bg-white/[0.03] rounded-md animate-pulse" />
       </div>
     );
   }
@@ -86,37 +87,50 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
     return progress >= line.start_time && (!nextLine || progress < nextLine.start_time);
   });
   
-  const currentLine = activeIndex >= 0 ? syncedLines[activeIndex].text : '...';
+  const currentLine = activeIndex >= 0 ? syncedLines[activeIndex].text : null;
   const nextLine = activeIndex >= 0 && activeIndex + 1 < syncedLines.length ? syncedLines[activeIndex + 1].text : '';
 
   return (
     <div 
-      className="w-full h-[88px] bg-[#030304] rounded-2xl px-4 py-3 flex flex-col justify-center cursor-pointer border border-white/[0.06] shadow-xl relative overflow-hidden transition-all duration-300 active:scale-[0.98] group"
+      className="w-full bg-white/[0.035] hover:bg-white/[0.06] active:scale-[0.98] rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] relative overflow-hidden transition-all duration-300 group"
       onClick={onClick}
     >
-      {/* Premium Dynamic Background */}
+      {/* Dynamic Cover Artwork Glow */}
       {currentTrack.coverArtUrl && (
         <>
           <div 
-            className="absolute inset-0 scale-[1.5] pointer-events-none transition-all duration-1000 ease-out opacity-60 group-hover:opacity-80 group-hover:scale-[1.6]"
+            className="absolute inset-0 scale-[1.5] pointer-events-none transition-all duration-1000 ease-out opacity-25 group-hover:opacity-40"
             style={{ 
               backgroundImage: `url(${currentTrack.coverArtUrl})`,
               backgroundPosition: 'center',
               backgroundSize: 'cover',
-              filter: 'blur(24px) saturate(200%) brightness(0.8)'
+              filter: 'blur(30px) saturate(200%) brightness(0.7)'
             }}
           />
-          {/* Frosted material for readability */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-xl pointer-events-none transition-all duration-300 group-hover:bg-black/40" />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xl pointer-events-none" />
         </>
       )}
-      <div className="w-full flex flex-col z-10 relative">
-        <span className="text-lg font-bold text-white w-full tracking-tight leading-snug line-clamp-2">
-          {currentLine}
-        </span>
-        <span className="text-sm font-medium text-white/50 w-full mt-0.5 truncate">
-          {nextLine}
-        </span>
+
+      <div className="w-full flex items-center justify-between z-10 relative gap-3">
+        <div className="flex flex-col min-w-0 flex-1">
+          {currentLine ? (
+            <>
+              <span className="text-[15px] font-bold text-white tracking-tight leading-snug line-clamp-1 drop-shadow-sm">
+                {currentLine}
+              </span>
+              {nextLine && (
+                <span className="text-[12px] font-medium text-white/50 mt-0.5 truncate">
+                  {nextLine}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-[14px] font-semibold text-white/80 truncate">
+              {syncedLines[0]?.text || 'Tap to view full lyrics'}
+            </span>
+          )}
+        </div>
+        <ChevronRight size={16} className="text-white/30 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all shrink-0" />
       </div>
     </div>
   );

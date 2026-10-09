@@ -1,631 +1,1120 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, Music, ArrowLeft, Shuffle, Search, X, Heart } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Music,
+  ArrowLeft,
+  Shuffle,
+  Search,
+  X,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
+  Radio,
+  Loader2,
+  Users,
+  CheckCircle,
+  MapPin,
+  ExternalLink,
+  Globe
+} from 'lucide-react';
 import { api } from '../services/api';
-import type { AudioDBArtist, AudioDBTrack } from '../services/api';
+import type { AudioDBArtist } from '../services/api';
 import { useAudioStore } from '../store/useAudioStore';
 import type { Track } from '../types';
 import { ArtImage } from '../components/ui/ArtImage';
+import { TrackContextMenu } from '../components/ui/TrackContextMenu';
 
 function formatDuration(seconds?: number): string {
- if (!seconds || isNaN(seconds)) return '3:00';
- const m = Math.floor(seconds / 60);
- const s = Math.floor(seconds % 60);
- return `${m}:${s.toString().padStart(2, '0')}`;
+  if (!seconds || isNaN(seconds)) return '3:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 const hashString = (str: string) => {
- let hash = 0;
- for (let i = 0; i < str.length; i++) {
- hash = str.charCodeAt(i) + ((hash << 5) - hash);
- }
- return Math.abs(hash);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
 };
 
-interface AlbumCard {
- name: string;
- artist: string;
- query: string;
- gradient: string;
+interface ArtistItem {
+  name: string;
+  query: string;
+  genre: string;
+  category: 'pop' | 'hiphop' | 'rock' | 'electronic' | 'indie' | 'global';
+  listeners: string;
+  bioSnippet: string;
 }
 
-const POPULAR_ARTISTS = [
- { name: 'Taylor Swift', query: 'Taylor Swift', gradient: 'from-white/10 to-transparent' },
- { name: 'The Weeknd', query: 'The Weeknd', gradient: 'from-white/10 to-transparent' },
- { name: 'Drake', query: 'Drake', gradient: 'from-white/10 to-transparent' },
- { name: 'Billie Eilish', query: 'Billie Eilish', gradient: 'from-white/10 to-transparent' },
- { name: 'Ed Sheeran', query: 'Ed Sheeran', gradient: 'from-white/10 to-transparent' },
- { name: 'Dua Lipa', query: 'Dua Lipa', gradient: 'from-white/10 to-transparent' },
- { name: 'Bad Bunny', query: 'Bad Bunny', gradient: 'from-white/10 to-transparent' },
- { name: 'BTS', query: 'BTS', gradient: 'from-white/10 to-transparent' },
- { name: 'Ariana Grande', query: 'Ariana Grande', gradient: 'from-white/10 to-transparent' },
- { name: 'Post Malone', query: 'Post Malone', gradient: 'from-white/10 to-transparent' },
- { name: 'Arijit Singh', query: 'Arijit Singh', gradient: 'from-white/10 to-transparent' },
- { name: 'A.R. Rahman', query: 'A.R. Rahman', gradient: 'from-white/10 to-transparent' },
+interface AlbumItem {
+  name: string;
+  artist: string;
+  query: string;
+  year: string;
+  genre: string;
+  category: 'pop' | 'hiphop' | 'rock' | 'electronic' | 'indie' | 'global';
+}
+
+interface RadioStationItem {
+  id: string;
+  name: string;
+  artist: string;
+  desc: string;
+  query: string;
+  trackCount: string;
+}
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'pop', label: 'Pop & R&B' },
+  { id: 'hiphop', label: 'Hip-Hop & Rap' },
+  { id: 'rock', label: 'Rock & Alt' },
+  { id: 'electronic', label: 'Electronic' },
+  { id: 'indie', label: 'Indie & Folk' },
+  { id: 'global', label: 'Global Hits' }
 ];
 
-const POPULAR_ALBUMS: AlbumCard[] = [
- { name: 'Midnights', artist: 'Taylor Swift', query: 'Taylor Swift Midnights', gradient: 'from-white/10 to-transparent' },
- { name: 'After Hours', artist: 'The Weeknd', query: 'The Weeknd After Hours', gradient: 'from-white/10 to-transparent' },
- { name: 'Future Nostalgia', artist: 'Dua Lipa', query: 'Dua Lipa Future Nostalgia', gradient: 'from-white/10 to-transparent' },
- { name: 'Divide', artist: 'Ed Sheeran', query: 'Ed Sheeran Divide', gradient: 'from-white/10 to-transparent' },
- { name: 'Un Verano Sin Ti', artist: 'Bad Bunny', query: 'Bad Bunny Un Verano Sin Ti', gradient: 'from-white/10 to-transparent' },
- { name: 'WHEN WE ALL FALL ASLEEP', artist: 'Billie Eilish', query: 'Billie Eilish WHEN WE ALL FALL ASLEEP', gradient: 'from-white/10 to-transparent' },
- { name: 'Scorpion', artist: 'Drake', query: 'Drake Scorpion', gradient: 'from-white/10 to-transparent' },
- { name: 'Map of the Soul: 7', artist: 'BTS', query: 'BTS Map of the Soul 7', gradient: 'from-white/10 to-transparent' },
- { name: 'Positions', artist: 'Ariana Grande', query: 'Ariana Grande Positions', gradient: 'from-white/10 to-transparent' },
- { name: 'Hollywood Bleeding', artist: 'Post Malone', query: 'Post Malone Hollywood Bleeding', gradient: 'from-white/10 to-transparent' },
- { name: 'Aashiqui 2', artist: 'Arijit Singh', query: 'Arijit Singh Aashiqui 2', gradient: 'from-white/10 to-transparent' },
- { name: 'Rockstar', artist: 'A.R. Rahman', query: 'A.R. Rahman Rockstar', gradient: 'from-white/10 to-transparent' },
+const POPULAR_ARTISTS: ArtistItem[] = [
+  { name: 'The Weeknd', query: 'The Weeknd', genre: 'R&B / Synthwave', category: 'pop', listeners: '112.8M', bioSnippet: 'Grammy-winning pioneer of nocturnal synthwave & dark cinematic pop.' },
+  { name: 'Taylor Swift', query: 'Taylor Swift', genre: 'Pop / Country', category: 'pop', listeners: '105.4M', bioSnippet: 'Record-breaking singer-songwriter traversing folk, synthpop and arenas.' },
+  { name: 'Kendrick Lamar', query: 'Kendrick Lamar', genre: 'Hip-Hop / West Coast', category: 'hiphop', listeners: '68.4M', bioSnippet: 'Pulitzer Prize-winning lyrical visionary and cultural powerhouse.' },
+  { name: 'Drake', query: 'Drake', genre: 'Hip-Hop / Melodic Rap', category: 'hiphop', listeners: '84.2M', bioSnippet: 'Dominant chart-topping icon shaping contemporary rap and R&B.' },
+  { name: 'Billie Eilish', query: 'Billie Eilish', genre: 'Alternative / Dark Pop', category: 'pop', listeners: '98.6M', bioSnippet: 'Genre-defying modern superstar known for intimate, whisper-close vocals.' },
+  { name: 'Daft Punk', query: 'Daft Punk', genre: 'Electronic / French Touch', category: 'electronic', listeners: '42.1M', bioSnippet: 'Legendary Parisian robot duo who redefined electronic dance music.' },
+  { name: 'Arctic Monkeys', query: 'Arctic Monkeys', genre: 'Indie Rock / Post-Punk', category: 'rock', listeners: '51.3M', bioSnippet: 'Sheffield rock legends celebrated for sharp poetic wit and iconic riffs.' },
+  { name: 'Dua Lipa', query: 'Dua Lipa', genre: 'Disco Pop / Dance', category: 'pop', listeners: '72.3M', bioSnippet: 'Global dancefloor powerhouse blending vintage disco with modern groove.' },
+  { name: 'Bad Bunny', query: 'Bad Bunny', genre: 'Latin Trap / Reggaeton', category: 'global', listeners: '69.5M', bioSnippet: 'Trailblazing Puerto Rican artist driving global Latin urban music.' },
+  { name: 'Fleet Foxes', query: 'Fleet Foxes', genre: 'Indie Folk / Harmony', category: 'indie', listeners: '18.2M', bioSnippet: 'Masters of pastoral acoustic harmonies and baroque folk textures.' },
+  { name: 'Ed Sheeran', query: 'Ed Sheeran', genre: 'Pop / Acoustic', category: 'pop', listeners: '76.1M', bioSnippet: 'Global acoustic troubadour with monumental stadium-sized melodies.' },
+  { name: 'A.R. Rahman', query: 'A.R. Rahman', genre: 'Soundtrack / World', category: 'global', listeners: '41.2M', bioSnippet: 'Academy Award-winning maestro blending Indian classical with world orchestra.' }
 ];
 
-const RADIO_STATIONS = [
- { name: 'Pop Hits Radio', desc: 'Today\'s biggest pop songs', query: 'pop hits 2024', gradient: 'from-white/5 to-transparent' },
- { name: 'Chill Beats Radio', desc: 'Relaxing beats and lo-fi', query: 'chill lofi beats', gradient: 'from-white/5 to-transparent' },
- { name: 'Rock Classics Radio', desc: 'Timeless rock anthems', query: 'classic rock greatest hits', gradient: 'from-white/5 to-transparent' },
- { name: 'Hip-Hop Radio', desc: 'Hottest rap and hip-hop', query: 'hip hop hits', gradient: 'from-white/5 to-transparent' },
- { name: 'Bollywood Radio', desc: 'Latest and classic Hindi songs', query: 'bollywood hits songs', gradient: 'from-white/5 to-transparent' },
- { name: 'K-Pop Radio', desc: 'Korean pop hits', query: 'kpop hits', gradient: 'from-white/5 to-transparent' },
+const POPULAR_ALBUMS: AlbumItem[] = [
+  { name: 'After Hours', artist: 'The Weeknd', query: 'The Weeknd After Hours full album', year: '2020', genre: 'Synthwave / R&B', category: 'pop' },
+  { name: 'Midnights', artist: 'Taylor Swift', query: 'Taylor Swift Midnights full album', year: '2022', genre: 'Dream Pop', category: 'pop' },
+  { name: 'DAMN.', artist: 'Kendrick Lamar', query: 'Kendrick Lamar DAMN full album', year: '2017', genre: 'Hip-Hop', category: 'hiphop' },
+  { name: 'Discovery', artist: 'Daft Punk', query: 'Daft Punk Discovery full album', year: '2001', genre: 'French House', category: 'electronic' },
+  { name: 'Future Nostalgia', artist: 'Dua Lipa', query: 'Dua Lipa Future Nostalgia full album', year: '2020', genre: 'Disco Pop', category: 'pop' },
+  { name: 'AM', artist: 'Arctic Monkeys', query: 'Arctic Monkeys AM full album', year: '2013', genre: 'Indie Rock', category: 'rock' },
+  { name: 'WHEN WE ALL FALL ASLEEP', artist: 'Billie Eilish', query: 'Billie Eilish WHEN WE ALL FALL ASLEEP full album', year: '2019', genre: 'Alt Pop', category: 'pop' },
+  { name: 'Scorpion', artist: 'Drake', query: 'Drake Scorpion full album', year: '2018', genre: 'Hip-Hop / R&B', category: 'hiphop' },
+  { name: 'Un Verano Sin Ti', artist: 'Bad Bunny', query: 'Bad Bunny Un Verano Sin Ti full album', year: '2022', genre: 'Latin / Urban', category: 'global' },
+  { name: 'Helplessness Blues', artist: 'Fleet Foxes', query: 'Fleet Foxes Helplessness Blues full album', year: '2011', genre: 'Indie Folk', category: 'indie' },
+  { name: 'Divide', artist: 'Ed Sheeran', query: 'Ed Sheeran Divide full album', year: '2017', genre: 'Pop', category: 'pop' },
+  { name: 'Rockstar', artist: 'A.R. Rahman', query: 'A.R. Rahman Rockstar full album', year: '2011', genre: 'Soundtrack', category: 'global' }
+];
+
+const RADIO_STATIONS: RadioStationItem[] = [
+  { id: 'weeknd-radio', name: 'The Weeknd Radio', artist: 'The Weeknd', desc: 'Nocturnal R&B, Synthwave & After Hours vibes', query: 'the weeknd synthwave r&b chill', trackCount: '50+ Tracks' },
+  { id: 'taylor-radio', name: 'Taylor Swift Radio', artist: 'Taylor Swift', desc: 'Eras tour favorites, Pop anthems & acoustic cuts', query: 'taylor swift pop hits acoustic', trackCount: '60+ Tracks' },
+  { id: 'kendrick-radio', name: 'Kendrick Lamar Radio', artist: 'Kendrick Lamar', desc: 'West Coast rap, West Coast anthems & conscious flow', query: 'kendrick lamar hip hop hits', trackCount: '45+ Tracks' },
+  { id: 'daft-radio', name: 'Daft Punk Radio', artist: 'Daft Punk', desc: 'French touch, electro disco & interstellar synth', query: 'daft punk electronic dance hits', trackCount: '50+ Tracks' },
+  { id: 'billie-radio', name: 'Billie Eilish Radio', artist: 'Billie Eilish', desc: 'Moody basslines, whisper-pop & alternative gems', query: 'billie eilish alternative pop hits', trackCount: '40+ Tracks' },
+  { id: 'indie-radio', name: 'Fleet Foxes & Folk Radio', artist: 'Fleet Foxes', desc: 'Acoustic fingerpicking, golden hour harmonies', query: 'fleet foxes bon iver indie folk', trackCount: '55+ Tracks' }
 ];
 
 export function Albums() {
- const [selectedItem, setSelectedItem] = useState<{ name: string; query: string; type: 'artist' | 'album' | 'radio' | 'search' } | null>(null);
- const [tracks, setTracks] = useState<Track[]>([]);
- const [artistMeta, setArtistMeta] = useState<AudioDBArtist | null>(null);
- const [trackMeta, setTrackMeta] = useState<AudioDBTrack | null>(null);
- const [isLoading, setIsLoading] = useState(false);
- const [searchQuery, setSearchQuery] = useState('');
- const [suggestions, setSuggestions] = useState<string[]>([]);
- const [showSuggestions, setShowSuggestions] = useState(false);
- const location = useLocation();
+  const [selectedItem, setSelectedItem] = useState<{
+    name: string;
+    query: string;
+    type: 'artist' | 'album' | 'radio' | 'search';
+  } | null>(null);
 
- const { setQueue, playTrack, queue, isPlaying, currentIndex, play, pause, likedSongs, toggleLikedSong } = useAudioStore();
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [artistMeta, setArtistMeta] = useState<AudioDBArtist | null>(null);
+  const [artistDiscography, setArtistDiscography] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [loadingRadioId, setLoadingRadioId] = useState<string | null>(null);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
- const playingTrack = queue[currentIndex];
- const isPlayingFromHere = selectedItem && playingTrack && tracks.some(t => t.id === playingTrack.id);
- const activeTrack = isPlayingFromHere ? playingTrack : null;
+  const artistScrollRef = useRef<HTMLDivElement>(null);
+  const radioScrollRef = useRef<HTMLDivElement>(null);
 
- useEffect(() => {
- if (activeTrack) {
- api.getAudioDBTrack(activeTrack.artist, activeTrack.title).then(meta => {
- setTrackMeta(meta);
- });
- } else {
- setTrackMeta(null);
- }
- }, [activeTrack]);
+  const location = useLocation();
+  const {
+    setQueue,
+    playTrack,
+    queue,
+    isPlaying,
+    currentIndex,
+    play,
+    pause,
+    likedSongs,
+    toggleLikedSong
+  } = useAudioStore();
 
- useEffect(() => {
- if (searchQuery.trim().length > 1) {
- const timer = setTimeout(() => {
- api.getSuggestions(searchQuery).then(setSuggestions);
- }, 300);
- return () => clearTimeout(timer);
- } else {
- setSuggestions([]);
- }
- }, [searchQuery]);
+  useEffect(() => {
+    if (searchQuery.trim().length > 1) {
+      const timer = setTimeout(() => {
+        api.getSuggestions(searchQuery).then(setSuggestions);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setSuggestions([]);
+    }
+  }, [searchQuery]);
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      handleItemClick(searchQuery, searchQuery, 'search');
+      setShowSuggestions(false);
+    }
+  };
 
+  const handleItemClick = async (
+    name: string,
+    query: string,
+    type: 'artist' | 'album' | 'radio' | 'search'
+  ) => {
+    setSelectedItem({ name, query, type });
+    setIsLoading(true);
+    setBioExpanded(false);
+    setArtistMeta(null);
+    setArtistDiscography([]);
+    try {
+      const searchQueryString = type === 'artist' ? `${query} songs` : query;
+      const isCandidateArtist = type === 'artist' || type === 'search';
 
- const handleSearchSubmit = (e: React.FormEvent) => {
- e.preventDefault();
- if (searchQuery.trim()) {
- handleItemClick(searchQuery, searchQuery, 'search');
- setShowSuggestions(false);
- }
- };
+      // Concurrently fetch tracks and check AudioDB for artist metadata
+      const [tracksData, initialMeta] = await Promise.all([
+        api.searchOnlineTracks(searchQueryString),
+        isCandidateArtist ? api.getAudioDBArtist(name) : Promise.resolve(null)
+      ]);
 
- const handleItemClick = async (name: string, query: string, type: 'artist' | 'album' | 'radio' | 'search') => {
- setSelectedItem({ name, query, type });
- setIsLoading(true);
- try {
- // Append ' songs' to artist queries to ensure YouTube returns videos instead of channels/playlists
- const searchQuery = type === 'artist' ? `${query} songs` : query;
- const [tracksData, metaData] = await Promise.all([
- api.searchOnlineTracks(searchQuery),
- type === 'artist' ? api.getAudioDBArtist(name) : Promise.resolve(null)
- ]);
- setTracks(tracksData);
- setArtistMeta(metaData);
- } catch (err) {
- console.error('Albums search failed:', err);
- } finally {
- setIsLoading(false);
- }
- };
+      const foundTracks = tracksData || [];
+      setTracks(foundTracks);
 
- useEffect(() => {
- if (location.state?.artist) {
- handleItemClick(location.state.artist, location.state.artist, 'artist');
- // Clear state to avoid re-triggering if user navigates back and forth
- window.history.replaceState({}, document.title);
- }
- }, [location.state?.artist]);
+      let finalMeta = initialMeta;
+      // If direct name search didn't match AudioDB artist, check if tracks share a dominant artist
+      if (!finalMeta && isCandidateArtist && foundTracks.length > 0) {
+        const topArtist = foundTracks[0]?.artist;
+        if (topArtist && topArtist.toLowerCase() !== name.toLowerCase()) {
+          try {
+            finalMeta = await api.getAudioDBArtist(topArtist);
+          } catch {
+            // ignore
+          }
+        }
+      }
 
- const handlePlay = (index: number) => {
- const isSameQueue = queue.length === tracks.length && queue[0]?.id === tracks[0]?.id;
- if (!isSameQueue) {
- setQueue(tracks);
- }
- if (currentIndex === index && isPlaying) {
- pause();
- } else if (currentIndex === index && !isPlaying) {
- play();
- } else {
- playTrack(index);
- }
- };
+      setArtistMeta(finalMeta);
 
- const handleBack = () => {
- setSelectedItem(null);
- setTracks([]);
- };
+      // If we identified an artist, fetch their official discography
+      const artistNameToUse = finalMeta?.strArtist || (type === 'artist' ? name : null);
+      if (artistNameToUse) {
+        try {
+          const discoData = await api.getAudioDBDiscography(artistNameToUse);
+          setArtistDiscography(discoData || []);
+        } catch {
+          setArtistDiscography([]);
+        }
+      } else {
+        setArtistDiscography([]);
+      }
+    } catch (err) {
+      console.error('Artist/Album search failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
- // Detail view
- if (selectedItem) {
- const isArtist = selectedItem.type === 'artist';
- const isSearch = selectedItem.type === 'search';
- const isListLayout = isArtist || isSearch;
- 
- // Generate deterministic mock stats for the artist
- const listeners = Math.floor((hashString(selectedItem.name) % 80) + 20) * 1000000 + (hashString(selectedItem.name + 'x') % 999999);
- 
- return (
- <div className="animate-fade-in relative">
- {/* Mobile Back Button */}
- <div className="md:hidden sticky top-0 z-50 bg-[var(--color-bg-panel)] border-b border-white/[0.02] px-4 py-3">
- <button 
- onClick={handleBack} 
- className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
- >
- <ArrowLeft size={24} />
- <span className="font-semibold text-sm">Back</span>
- </button>
- </div>
+  const handlePlayStationDirect = async (station: RadioStationItem) => {
+    try {
+      setLoadingRadioId(station.id);
+      const stationTracks = await api.searchOnlineTracks(station.query);
+      if (stationTracks && stationTracks.length > 0) {
+        setQueue(stationTracks);
+        playTrack(0);
+      }
+    } catch (err) {
+      console.error('Radio play failed:', err);
+    } finally {
+      setLoadingRadioId(null);
+    }
+  };
 
- <button onClick={handleBack} className="hidden md:flex fixed top-24 left-10 z-[60] items-center gap-2 bg-[var(--color-bg-card)] px-4 py-2 rounded-full text-zinc-300 hover:text-white text-sm font-bold transition-all border border-white/10 hover:bg-white/10 hover:scale-105 shadow-xl">
- <ArrowLeft size={16} /> Back
- </button>
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement | null>, amount: number) => {
+    if (ref.current) {
+      ref.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
 
- {isArtist ? (
- <div className="relative overflow-hidden pt-32 pb-10 px-6 md:px-10 min-h-[350px] flex items-end">
- <div className="absolute inset-0 z-0">
- <ArtImage 
- artist={selectedItem.name} 
- type="artist"
- className="w-full h-full object-cover shadow-xl transition-transform duration-700 scale-105"
- />
- <div className="absolute inset-0 bg-gradient-to-t from-[#030304] via-[#030304]/60 to-transparent opacity-90"/>
- </div>
- 
- <div className="relative z-20 w-full mt-auto max-w-[1400px] mx-auto px-2">
- {/* Verified badge removed */}
- <h1 className="text-6xl md:text-[7rem] font-black text-white tracking-tighter mb-5 drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] leading-none">{selectedItem.name}</h1>
- <p className="text-white text-sm md:text-base font-bold uppercase tracking-widest">{listeners.toLocaleString()} monthly listeners</p>
- </div>
- </div>
- ) : isSearch ? (
- <div className="relative overflow-hidden pt-32 pb-10 px-6 md:px-10 min-h-[250px] flex items-end">
- <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-[#030304]"/>
- <div className="relative z-20 w-full mt-auto max-w-[1400px] mx-auto px-2">
- <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Search Results for"{selectedItem.name}"</h1>
- <p className="text-sm font-bold text-white uppercase tracking-widest mt-3">{tracks.length} tracks found</p>
- </div>
- </div>
- ) : (
- <div className="relative overflow-hidden pt-32 pb-10 px-6 md:px-10 min-h-[250px] flex items-end">
- <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-[#030304]"/>
- <div className="relative z-20 w-full mt-auto max-w-[1400px] mx-auto px-2">
- <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">{selectedItem.name}</h1>
- <p className="text-sm font-bold text-white uppercase tracking-widest mt-3">{tracks.length} tracks</p>
- </div>
- </div>
- )}
+  useEffect(() => {
+    if (location.state?.album) {
+      const query = location.state.artist ? `${location.state.artist} ${location.state.album}` : location.state.album;
+      handleItemClick(location.state.album, query, 'album');
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.artist) {
+      handleItemClick(location.state.artist, location.state.artist, 'artist');
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.artist, location.state?.album]);
 
- {isLoading ? (
- <div className="flex flex-col items-center justify-center py-32">
- <div className="w-12 h-12 border-[3px] border-white/10 border-t-white rounded-full animate-spin mb-4"/>
- <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Loading tracks…</p>
- </div>
- ) : (
- <div className="px-6 md:px-10 mt-6 max-w-[1400px] mx-auto relative z-20">
- {tracks.length > 0 && (
- <div className="flex items-center gap-6 mb-10 px-2">
- <button 
- onClick={() => { setQueue(tracks); playTrack(0); }}
- className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-zinc-950 hover:scale-105 active:scale-95 hover:shadow-[0_8px_32px_rgba(255,255,255,0.2)] transition-all shadow-xl"
- >
- <Play size={32} fill="currentColor"className="ml-1"/>
- </button>
- {isArtist && (
- <>
- <button className="text-zinc-400 hover:text-white transition-colors">
- <Shuffle size={32} strokeWidth={1.5} />
- </button>
- </>
- )}
- </div>
- )}
+  const handlePlay = (index: number) => {
+    const isSameQueue = queue.length === tracks.length && queue[0]?.id === tracks[0]?.id;
+    if (!isSameQueue) {
+      setQueue(tracks);
+    }
+    if (currentIndex === index && isPlaying) {
+      pause();
+    } else if (currentIndex === index && !isPlaying) {
+      play();
+    } else {
+      playTrack(index);
+    }
+  };
 
- {isListLayout && tracks.length > 0 && (
- <h2 className="text-xl font-black text-white mb-6 px-2 tracking-tight">
- {isSearch ? 'Top Results' : 'Popular'}
- </h2>
- )}
+  const handleBack = () => {
+    setSelectedItem(null);
+    setTracks([]);
+    setArtistMeta(null);
+    setArtistDiscography([]);
+    setBioExpanded(false);
+  };
 
- {isListLayout ? (
- <div className="flex flex-col lg:flex-row gap-10 mb-10 px-2">
- {/* Left Column: Popular Tracks */}
- <div className="flex-1 min-w-0 flex flex-col gap-1">
- {tracks.map((track, idx) => {
- const playing = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
- const mockStreams = Math.floor((hashString(track.id) % 900) + 100) * 1000000 + (hashString(track.id + 's') % 999999);
- const duration = track.duration || ((hashString(track.id) % 180) + 120);
- 
- return (
- <div 
- key={track.id + idx} 
- className={`group flex items-center gap-4 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-300 ${playing ? 'bg-white/[0.06] shadow-sm' : 'hover:bg-white/[0.04]'}`}
- onClick={() => handlePlay(idx)}
- >
- <div className={`w-6 text-right text-base font-bold ${playing ? 'text-white' : 'text-zinc-500 group-hover:hidden'}`}>
- {idx + 1}
- </div>
- <div className={`w-6 text-right hidden ${playing ? 'hidden' : 'group-hover:block'}`}>
- <Play size={18} fill="currentColor"className="text-white"/>
- </div>
- 
- <div className="w-12 h-12 bg-zinc-900 rounded-md shrink-0 border border-white/[0.04] overflow-hidden">
- {track.coverArtUrl ? (
- <img src={track.coverArtUrl} alt=""className="w-full h-full object-cover"/>
- ) : (
- <div className="w-full h-full flex items-center justify-center"><Music size={18} className="text-zinc-500"/></div>
- )}
- </div>
- 
- <div className="flex-1 min-w-0 flex flex-col justify-center">
- <p className={`text-[15px] font-bold truncate ${playing ? 'text-white' : 'text-zinc-100 group-hover:text-white'}`}>{track.title}</p>
- {idx % 2 === 0 && <span className="inline-flex items-center justify-center bg-zinc-400/20 text-zinc-300 text-[9px] rounded-sm w-4 h-4 mt-0.5">E</span>}
- </div>
- 
- <div className="hidden md:block w-32 text-right text-[13px] font-medium text-zinc-400 tabular-nums">
- {mockStreams.toLocaleString()}
- </div>
- 
- <div className="w-12 text-right text-[13px] font-medium text-zinc-400 tabular-nums">
- {formatDuration(duration)}
- </div>
- </div>
- );
- })}
- 
- {/* About Section */}
- {artistMeta && artistMeta.strBiographyEN && (
- <div className="mt-12 pt-10 border-t border-white/[0.06]">
- <h2 className="text-2xl font-black text-white mb-6 tracking-tight">About</h2>
- <div className="bg-[var(--color-bg-card)] border border-white/[0.04] rounded-3xl p-6 md:p-8 hover:bg-white/[0.02] transition-colors group">
- {artistMeta.strArtistThumb && (
- <div className="w-full h-64 md:h-[400px] rounded-2xl overflow-hidden mb-8 shadow-2xl relative border border-white/[0.04]">
- <div className="absolute inset-0 bg-gradient-to-t from-[#030304] to-transparent z-10 opacity-90"></div>
- <img src={artistMeta.strArtistThumb} alt={artistMeta.strArtist} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"/>
- <div className="absolute bottom-8 left-8 z-20">
- <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-xl">{artistMeta.strArtist}</h3>
- <p className="text-white font-bold mt-2 uppercase tracking-widest text-xs">{listeners.toLocaleString()} monthly listeners</p>
- </div>
- </div>
- )}
- <p className="text-zinc-400 text-[15px] leading-relaxed line-clamp-[6] hover:line-clamp-none transition-all cursor-pointer font-medium">
- {artistMeta.strBiographyEN}
- </p>
- <div className="flex flex-wrap gap-3 mt-8">
- {artistMeta.strGenre && (
- <span className="px-4 py-2 bg-white/[0.04] border border-white/[0.06] rounded-full text-[11px] font-black text-white tracking-widest uppercase">{artistMeta.strGenre}</span>
- )}
- {artistMeta.intFormedYear && artistMeta.intFormedYear !== '0' && (
- <span className="px-4 py-2 bg-white/[0.04] border border-white/[0.06] rounded-full text-[11px] font-black text-white tracking-widest uppercase">Formed {artistMeta.intFormedYear}</span>
- )}
- {artistMeta.strWebsite && (
- <a href={artistMeta.strWebsite.startsWith('http') ? artistMeta.strWebsite : `https://${artistMeta.strWebsite}`} target="_blank"rel="noreferrer"className="px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full text-[11px] font-black tracking-widest hover:bg-white/20 transition-colors uppercase">
- Website
- </a>
- )}
- </div>
- </div>
- </div>
- )}
- </div>
+  const filteredArtists = activeCategory === 'all'
+    ? POPULAR_ARTISTS
+    : POPULAR_ARTISTS.filter(a => a.category === activeCategory);
 
- {/* Right Column: Track Details */}
- {activeTrack && (
- <div className="w-full lg:w-[360px] shrink-0 flex flex-col gap-6">
- <div className="bg-[var(--color-bg-card)] rounded-2xl p-6 border border-white/[0.04] shadow-xl animate-fade-in">
- <div className="flex items-center justify-between mb-5">
- <h3 className="font-black text-white text-lg tracking-tight">Track Details</h3>
- </div>
- <div className="flex flex-col gap-5">
- <div className="w-full aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-white/[0.04] shadow-2xl relative group">
- {activeTrack.coverArtUrl ? (
- <img src={activeTrack.coverArtUrl} alt={activeTrack.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
- ) : (
- <div className="w-full h-full flex items-center justify-center"><Music size={32} className="text-zinc-600"/></div>
- )}
- <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
- </div>
- <div>
- <h4 className="text-2xl font-black text-white truncate tracking-tight">{activeTrack.title}</h4>
- <p className="text-[15px] text-zinc-400 mt-1 font-bold truncate">{activeTrack.artist}</p>
- <div className="flex flex-wrap gap-2 mt-4">
- <span className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] font-black text-zinc-300 uppercase tracking-widest">
- {formatDuration(activeTrack.duration || 180)}
- </span>
- <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
- <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"/> Playing
- </span>
- {trackMeta?.strGenre && (
- <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-white uppercase tracking-widest">
- {trackMeta.strGenre}
- </span>
- )}
- </div>
- {trackMeta?.strAlbum && (
- <p className="text-[13px] font-medium text-zinc-500 mt-4">
- Album: <span className="text-zinc-300 font-bold">{trackMeta.strAlbum}</span>
- </p>
- )}
- {trackMeta?.strDescriptionEN && (
- <p className="text-[13px] text-zinc-400 mt-3 line-clamp-4 hover:line-clamp-none transition-all cursor-pointer font-medium leading-relaxed">
- {trackMeta.strDescriptionEN}
- </p>
- )}
- </div>
- </div>
- </div>
- </div>
- )}
- </div>
- ) : (
- <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
- {tracks.map((track, idx) => {
- const isCurrentlyPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
- const isLiked = (likedSongs || []).some(t => t.id === track.id);
- 
- return (
- <div 
- key={track.id + idx} 
- className="group cursor-pointer transform-style-3d hover:[transform:rotateX(5deg)_rotateY(-5deg)_scale(1.02)] transition-all duration-500 animate-fade-in"
- style={{ animationDelay: `${idx * 40}ms` }}
- onClick={() => handlePlay(idx)}
- >
- <div className={`relative aspect-square rounded-2xl overflow-hidden shadow-xl mb-3 border transition-all duration-500 ${isCurrentlyPlaying ? 'border-white/50 shadow-[0_10px_30px_rgba(255,255,255,0.2)]' : 'border-white/[0.04] group-hover:border-white/[0.1] group-hover:shadow-2xl bg-zinc-900'}`}>
- {track.coverArtUrl ? (
- <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"loading="lazy"/>
- ) : (
- <div className="w-full h-full flex items-center justify-center bg-[#030304]">
- <Music className="text-zinc-700 w-10 h-10"/>
- </div>
- )}
- 
- {/* Hover overlay with glassmorphism */}
- <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center transition-all duration-300 ${isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
- {/* Play button */}
- <div className={`w-14 h-14 rounded-full bg-white flex items-center justify-center text-zinc-950 shadow-[0_4px_24px_rgba(255,255,255,0.3)] transition-all duration-300 ${isCurrentlyPlaying ? 'scale-100' : 'scale-75 group-hover:scale-100 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]'}`}>
- {isCurrentlyPlaying ? <Pause size={24} fill="currentColor"/> : <Play size={24} fill="currentColor"className="ml-1"/>}
- </div>
- </div>
+  const filteredAlbums = activeCategory === 'all'
+    ? POPULAR_ALBUMS
+    : POPULAR_ALBUMS.filter(a => a.category === activeCategory);
 
- {/* Rank badge for top 3 */}
- {idx < 3 && (
- <div className="absolute top-3 left-3 w-8 h-8 rounded-xl bg-[#030304]/80 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/[0.08] z-10">
- <span className="text-[13px] font-black text-white">{idx + 1}</span>
- </div>
- )}
+  // ══════════════════════════════════════════════════════════════════════
+  // DETAIL VIEW (When an Artist, Album, or Radio is selected)
+  // ══════════════════════════════════════════════════════════════════════
+  if (selectedItem) {
+    const isArtist = selectedItem.type === 'artist' || !!artistMeta;
+    const isSearch = selectedItem.type === 'search';
 
- {/* Like button */}
- <button
- className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 z-10 ${isLiked ? 'bg-white shadow-md scale-100' : 'bg-black/40 backdrop-blur-md scale-0 group-hover:scale-100 border border-white/10 hover:bg-white/20'}`}
- onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}
- >
- <Heart size={14} className={isLiked ? 'text-black fill-black' : 'text-white'} />
- </button>
+    const artistDisplayName = artistMeta?.strArtist || selectedItem.name;
+    const bannerImageUrl = artistMeta?.strArtistFanart || artistMeta?.strArtistBanner || artistMeta?.strArtistWideThumb || artistMeta?.strArtistThumb;
+    const listeners = Math.floor((hashString(artistDisplayName) % 80) + 20) * 1000000 + (hashString(artistDisplayName + 'x') % 999999);
+    const rawFollowers = artistMeta?.intFollowers ? parseInt(artistMeta.intFollowers, 10) : null;
+    const followersDisplay = rawFollowers && !isNaN(rawFollowers)
+      ? `${rawFollowers.toLocaleString()} followers`
+      : `${listeners.toLocaleString()} monthly listeners`;
+    const bioText = artistMeta?.strBiography || artistMeta?.strBiographyEN || '';
 
- {/* Playing indicator */}
- {isCurrentlyPlaying && (
- <div className="absolute bottom-3 left-3 flex items-end gap-[3px] h-5 z-10">
- {[0,1,2].map(i => (
- <div key={i} className="w-[3px] rounded-full bg-white eq-bar"style={{ height: '100%' }} />
- ))}
- </div>
- )}
- </div>
- 
- <h3 className={`font-bold truncate text-[15px] transition-colors ${isCurrentlyPlaying ? 'text-white' : 'text-zinc-100 group-hover:text-white'}`} title={track.title}>
- {track.title}
- </h3>
- <p className="text-[13px] text-zinc-400 font-medium truncate mt-0.5 group-hover:text-zinc-300 transition-colors"title={track.artist}>{track.artist}</p>
- </div>
- );
- })}
- </div>
- )}
- </div>
- )}
- </div>
- );
- }
+    return (
+      <div className="animate-fade-in relative pb-32">
+        {/* Navigation Bar */}
+        <div className="sticky top-0 z-40 bg-[var(--color-surface-0)]/90 backdrop-blur-xl border-b border-white/[0.04] px-4 md:px-10 py-3.5 flex items-center justify-between">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors cursor-pointer py-1.5 px-3 rounded-full hover:bg-white/[0.06] active:scale-95 text-xs font-bold uppercase tracking-wider"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Artists</span>
+          </button>
 
-  // Browse view
-  return (
-    <div className="animate-fade-in">
-      <div className="px-6 md:px-10 pt-12 pb-6">
-        <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Albums & Artists</h1>
-        <p className="text-[15px] font-medium text-zinc-500 mb-10">Explore popular artists, albums, and radio stations</p>
-
-        {/* Search Bar */}
-        <div className="relative max-w-2xl group z-50">
-          <div className="absolute inset-0 bg-white/10 rounded-full blur-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"/>
-          <form onSubmit={handleSearchSubmit} className="relative z-20">
-            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-zinc-500 group-focus-within:text-white transition-colors duration-300"/>
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setShowSuggestions(false)}
-              className="block w-full pl-14 pr-12 py-5 bg-[var(--color-bg-panel)] border border-white/[0.06] rounded-full text-[15px] font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-white/50 focus:scale-[1.01] transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
-              placeholder="Search for artists, albums, or songs..."
-            />
-            {searchQuery && (
-              <button 
-                type="button"
-                onClick={() => { setSearchQuery(''); setSuggestions([]); }} 
-                className="absolute inset-y-0 right-0 pr-6 flex items-center text-zinc-500 hover:text-white transition-colors"
+          {tracks.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setQueue(tracks);
+                  playTrack(0);
+                }}
+                className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer"
               >
-                <X className="h-5 w-5"/>
+                <Play size={13} fill="currentColor" className="ml-0.5" />
+                <span>Play All</span>
               </button>
-            )}
-          </form>
-
-          {/* Suggestions Dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-3 bg-[var(--color-bg-panel)] border border-white/[0.08] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden animate-fade-in p-2">
-              <ul className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                {suggestions.map((suggestion, idx) => (
-                  <li key={idx}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setSearchQuery(suggestion);
-                        handleItemClick(suggestion, suggestion, 'search');
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/[0.04] text-[15px] font-bold text-zinc-300 hover:text-white transition-colors flex items-center gap-4 group"
-                    >
-                      <Search className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors"/>
-                      <span className="truncate">{suggestion}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
         </div>
-      </div>
 
-      <div className="px-6 md:px-10 space-y-16 mt-4">
-        {/* Popular Artists — Circular */}
-        <section>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-1.5 h-6 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]"/>
-            <h2 className="text-2xl font-black text-white tracking-tight">Top Artists</h2>
+        {/* Hero Header */}
+        {isArtist ? (
+          <div className="relative overflow-hidden pt-28 pb-12 px-6 md:px-12 min-h-[380px] md:min-h-[420px] flex items-end">
+            <div className="absolute inset-0 z-0">
+              {bannerImageUrl ? (
+                <img
+                  src={bannerImageUrl}
+                  alt={artistDisplayName}
+                  className="w-full h-full object-cover transition-transform duration-1000 scale-105 filter brightness-90 contrast-[1.05]"
+                />
+              ) : (
+                <ArtImage
+                  artist={artistDisplayName}
+                  type="artist"
+                  className="w-full h-full object-cover transition-transform duration-1000 scale-105 filter brightness-90 contrast-[1.05]"
+                />
+              )}
+              {/* Cinematic Vignette Gradients */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-0)] via-[var(--color-surface-0)]/65 to-black/40" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-surface-0)]/90 via-transparent to-[var(--color-surface-0)]/70 pointer-events-none" />
+              <div className="absolute inset-0 bg-radial-gradient pointer-events-none opacity-60" />
+            </div>
+
+            <div className="relative z-20 w-full max-w-[1400px] mx-auto">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-400/30 backdrop-blur-md shadow-sm">
+                  <CheckCircle size={12} className="text-blue-400" />
+                  Verified Artist
+                </span>
+                {artistMeta?.strGenre && (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-zinc-300 border border-white/10 backdrop-blur-md">
+                    {artistMeta.strGenre}
+                  </span>
+                )}
+                {artistMeta?.strCountry && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-300 bg-black/40 px-2.5 py-1 rounded-full border border-white/[0.08] backdrop-blur-md">
+                    <MapPin size={11} className="text-zinc-400" />
+                    {artistMeta.strCountry}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-white tracking-tighter mb-4 drop-shadow-2xl leading-none capitalize">
+                {artistDisplayName}
+              </h1>
+              <div className="text-zinc-300 text-xs md:text-sm font-semibold tracking-wide flex items-center flex-wrap gap-2 sm:gap-3">
+                <span className="text-white font-bold">{followersDisplay}</span>
+                {artistMeta?.intFormedYear && artistMeta.intFormedYear !== '0' && (
+                  <span className="text-zinc-400">• Formed {artistMeta.intFormedYear}</span>
+                )}
+                {artistMeta?.strStyle && (
+                  <span className="text-zinc-400">• {artistMeta.strStyle}</span>
+                )}
+                {artistMeta?.strLabel && (
+                  <span className="text-zinc-400 hidden sm:inline">• {artistMeta.strLabel}</span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-4 md:gap-8 overflow-x-auto custom-scrollbar pb-6 pt-4 px-2 -mx-2">
-            {POPULAR_ARTISTS.map((artist) => (
+        ) : (
+          <div className="relative overflow-hidden pt-28 pb-10 px-6 md:px-12 min-h-[300px] flex items-end bg-[var(--color-surface-0)]">
+            {tracks[0]?.coverArtUrl && (
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <img
+                  src={tracks[0].coverArtUrl}
+                  alt=""
+                  className="w-full h-full object-cover filter blur-3xl scale-150 opacity-30"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-0)] via-[var(--color-surface-0)]/80 to-transparent" />
+              </div>
+            )}
+            <div className="relative z-20 w-full max-w-[1400px] mx-auto">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block">
+                {isSearch ? 'Search Result' : 'Album Release'}
+              </span>
+              <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight">
+                {selectedItem.name}
+              </h1>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 flex items-center gap-2">
+                <span>{tracks.length} tracks available</span>
+                {tracks[0]?.artist && (
+                  <span>• Featuring {tracks[0].artist}</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Content Body */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-32">
+            <div className="w-10 h-10 border-2 border-white/15 border-t-white rounded-full animate-spin mb-4" />
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+              Tuning in to {selectedItem.name}…
+            </p>
+          </div>
+        ) : (
+          <div className="px-4 sm:px-6 md:px-12 max-w-[1400px] mx-auto mt-8">
+            {/* Quick Action Controls */}
+            {tracks.length > 0 && (
+              <div className="flex items-center gap-4 mb-8">
+                <button
+                  onClick={() => {
+                    setQueue(tracks);
+                    playTrack(0);
+                  }}
+                  className="w-14 h-14 bg-white rounded-full flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
+                  title="Play"
+                >
+                  <Play size={24} fill="black" className="ml-0.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+                    setQueue(shuffled);
+                    playTrack(0);
+                  }}
+                  className="w-11 h-11 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/[0.06]"
+                  title="Shuffle"
+                >
+                  <Shuffle size={18} />
+                </button>
+              </div>
+            )}
+
+            {/* Split Tracklist & Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+              {/* Left / Main Column: Popular Songs */}
+              <div className="lg:col-span-8 space-y-2">
+                <h2 className="text-[12px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-4">
+                  {isSearch ? 'Top Results' : 'Popular Songs'}
+                </h2>
+
+                <div className="space-y-1">
+                  {tracks.map((track, idx) => {
+                    const isTrackPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
+                    const isLiked = (likedSongs || []).some((t) => t.id === track.id);
+                    const duration = track.duration || ((hashString(track.id) % 180) + 120);
+
+                    return (
+                      <div
+                        key={track.id + idx}
+                        onClick={() => handlePlay(idx)}
+                        className={`group flex items-center gap-3 sm:gap-4 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 select-none ${
+                          isTrackPlaying
+                            ? 'bg-white/[0.09] border border-white/20 shadow-md ring-1 ring-white/10'
+                            : 'hover:bg-white/[0.04] border border-transparent'
+                        }`}
+                      >
+                        {/* Rank or Equalizer */}
+                        <div className="w-6 flex justify-center shrink-0">
+                          {isTrackPlaying ? (
+                            <div className="flex items-end justify-center gap-[2px] h-3.5">
+                              {[0, 1, 2].map((i) => (
+                                <div key={i} className="w-[2px] rounded-full bg-white eq-bar" style={{ height: '100%' }} />
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[13px] font-mono font-semibold text-zinc-500 tabular-nums">
+                              {idx + 1}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Cover Art */}
+                        <div className="w-11 h-11 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-white/[0.06] relative shadow-sm">
+                          {track.coverArtUrl ? (
+                            <img src={track.coverArtUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Music size={16} className="text-zinc-600" />
+                            </div>
+                          )}
+                          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isTrackPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            {isTrackPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
+                          </div>
+                        </div>
+
+                        {/* Title & Artist */}
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className={`font-bold text-[14px] truncate ${isTrackPlaying ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>
+                            {track.title}
+                          </p>
+                          <p className="text-[12px] font-medium text-zinc-500 truncate mt-0.5">
+                            {track.artist}
+                          </p>
+                        </div>
+
+                        {/* Duration & Actions */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLikedSong?.(track);
+                            }}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                              isLiked ? 'text-white' : 'text-zinc-600 hover:text-white opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            <Heart size={14} className={isLiked ? 'fill-white text-white' : ''} />
+                          </button>
+                          <span className="text-[11px] font-mono font-medium text-zinc-500 tabular-nums w-10 text-right">
+                            {formatDuration(duration)}
+                          </span>
+                          <div onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <TrackContextMenu track={track} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Artist Discography Row if available */}
+                {artistDiscography && artistDiscography.length > 0 && (
+                  <div className="mt-12 pt-8 border-t border-white/[0.06]">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[12px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+                        Albums & Releases ({artistDiscography.length})
+                      </h3>
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                        Official Discography
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {artistDiscography.slice(0, 12).map((album, i) => (
+                        <div
+                          key={i}
+                          onClick={() => handleItemClick(album.strAlbum, `${artistDisplayName} ${album.strAlbum}`, 'album')}
+                          className="group/album p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/[0.1] transition-all cursor-pointer"
+                        >
+                          <div className="aspect-square rounded-lg overflow-hidden bg-zinc-900 mb-2 relative shadow-md">
+                            <ArtImage
+                              artist={artistDisplayName}
+                              album={album.strAlbum}
+                              type="album"
+                              className="w-full h-full object-cover group-hover/album:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/album:opacity-100 transition-opacity flex items-center justify-center">
+                              <Play size={16} fill="white" />
+                            </div>
+                          </div>
+                          <p className="font-bold text-[13px] text-zinc-200 group-hover/album:text-white truncate">
+                            {album.strAlbum}
+                          </p>
+                          {album.intYearReleased && (
+                            <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                              {album.intYearReleased}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: About Artist Bio Card */}
+              <div className="lg:col-span-4">
+                {artistMeta && (bioText || artistMeta.strArtistThumb || bannerImageUrl) ? (
+                  <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 relative overflow-hidden shadow-2xl backdrop-blur-md sticky top-20">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+                        About {artistMeta.strArtist}
+                      </h3>
+                      {artistMeta.strGenre && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
+                          {artistMeta.strGenre}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Artist Photo Card */}
+                    {(artistMeta.strArtistThumb || bannerImageUrl) && (
+                      <div className="w-full h-48 rounded-xl overflow-hidden mb-4 relative shadow-lg group">
+                        <img
+                          src={artistMeta.strArtistThumb || bannerImageUrl}
+                          alt={artistMeta.strArtist}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3.5">
+                          <div>
+                            <p className="text-white font-black text-base drop-shadow-md">
+                              {artistMeta.strArtist}
+                            </p>
+                            {artistMeta.strCountry && (
+                              <p className="text-zinc-300 text-[11px] font-medium flex items-center gap-1">
+                                <MapPin size={10} className="text-zinc-400" />
+                                {artistMeta.strCountry}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Biography */}
+                    {bioText && (
+                      <div className="mb-4">
+                        <p
+                          className={`text-zinc-300 text-[13px] leading-relaxed font-normal ${
+                            bioExpanded ? '' : 'line-clamp-6'
+                          }`}
+                        >
+                          {bioText}
+                        </p>
+                        {bioText.length > 280 && (
+                          <button
+                            type="button"
+                            onClick={() => setBioExpanded(!bioExpanded)}
+                            className="mt-2 text-xs font-bold text-white hover:text-zinc-300 transition-colors uppercase tracking-wider underline cursor-pointer"
+                          >
+                            {bioExpanded ? 'Show Less' : 'Read Full Bio'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Key Details Grid */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/[0.06] text-[12px]">
+                      {artistMeta.intFormedYear && artistMeta.intFormedYear !== '0' && (
+                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">
+                            Formed
+                          </span>
+                          <span className="text-zinc-200 font-semibold">{artistMeta.intFormedYear}</span>
+                        </div>
+                      )}
+                      {artistMeta.strCountry && (
+                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">
+                            Origin
+                          </span>
+                          <span className="text-zinc-200 font-semibold truncate block" title={artistMeta.strCountry}>
+                            {artistMeta.strCountry}
+                          </span>
+                        </div>
+                      )}
+                      {artistMeta.strLabel && (
+                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">
+                            Record Label
+                          </span>
+                          <span className="text-zinc-200 font-semibold truncate block" title={artistMeta.strLabel}>
+                            {artistMeta.strLabel}
+                          </span>
+                        </div>
+                      )}
+                      {artistMeta.intMembers && artistMeta.intMembers !== '0' && (
+                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">
+                            Members
+                          </span>
+                          <span className="text-zinc-200 font-semibold">{artistMeta.intMembers} Members</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Links */}
+                    <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/[0.06]">
+                      {artistMeta.strWebsite && (
+                        <a
+                          href={artistMeta.strWebsite.startsWith('http') ? artistMeta.strWebsite : `https://${artistMeta.strWebsite}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm"
+                        >
+                          <Globe size={11} />
+                          <span>Official Site</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
+                      {artistMeta.strFacebook && (
+                        <a
+                          href={artistMeta.strFacebook.startsWith('http') ? artistMeta.strFacebook : `https://${artistMeta.strFacebook}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/10 text-zinc-300 hover:text-white border border-white/[0.08] rounded-full text-[11px] font-bold uppercase tracking-wider transition-all"
+                        >
+                          Facebook
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 sticky top-20">
+                    <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-3">
+                      Search Summary
+                    </h3>
+                    <div className="space-y-3 text-xs text-zinc-400">
+                      <p className="leading-relaxed">
+                        Showing results for <span className="text-white font-bold font-mono">"{selectedItem.name}"</span> with high-fidelity lossless streaming.
+                      </p>
+                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5">
+                        <div className="flex justify-between text-zinc-300">
+                          <span>Total Tracks</span>
+                          <span className="font-bold text-white">{tracks.length}</span>
+                        </div>
+                        <div className="flex justify-between text-zinc-300">
+                          <span>Streaming Quality</span>
+                          <span className="font-bold text-emerald-400">Lossless Master</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setQueue(tracks);
+                          playTrack(0);
+                        }}
+                        className="w-full mt-2 py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      >
+                        <Play size={13} fill="currentColor" />
+                        <span>Play All Results</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // MAIN BROWSE HUB (The requested enhanced view)
+  // ══════════════════════════════════════════════════════════════════════
+  const spotlightArtist = POPULAR_ARTISTS[0]; // The Weeknd
+
+  return (
+    <div className="animate-fade-in pb-32">
+      {/* Header & Search Area */}
+      <div className="px-4 sm:px-6 md:px-12 pt-10 sm:pt-14 pb-8 max-w-[1400px] mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                Music Directory
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-none">
+              Artists & Albums
+            </h1>
+            <p className="text-[13px] sm:text-[14px] font-medium text-zinc-500 mt-2">
+              Curated artist discographies, verified profiles, and radio stations
+            </p>
+          </div>
+
+          {/* Search Form */}
+          <div className="w-full md:w-[380px] relative z-30">
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setShowSuggestions(false)}
+                className="w-full pl-11 pr-10 py-3 bg-white/[0.04] hover:bg-white/[0.06] focus:bg-black border border-white/[0.08] focus:border-white/30 rounded-2xl text-[14px] font-medium text-white placeholder-zinc-500 focus:outline-none transition-all shadow-inner"
+                placeholder="Search artists, albums, songs…"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSuggestions([]);
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </form>
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-2 bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl p-1.5 animate-fade-in">
+                {suggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearchQuery(suggestion);
+                      handleItemClick(suggestion, suggestion, 'search');
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-medium text-zinc-300 hover:text-white transition-colors flex items-center gap-3"
+                  >
+                    <Search size={14} className="text-zinc-500" />
+                    <span className="truncate">{suggestion}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ Editorial Spotlight Banner ═══ */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-r from-zinc-950 via-zinc-900 to-black p-6 sm:p-8 md:p-10 mb-10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] group">
+          {/* Background Ambient Imagery */}
+          <div className="absolute right-0 top-0 bottom-0 w-full md:w-3/5 z-0 pointer-events-none opacity-40 md:opacity-60 overflow-hidden">
+            <ArtImage
+              artist={spotlightArtist.name}
+              type="artist"
+              className="w-full h-full object-cover object-top filter brightness-75 group-hover:scale-105 transition-transform duration-1000"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent md:hidden" />
+          </div>
+
+          {/* Banner Content */}
+          <div className="relative z-10 max-w-xl">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/10 border border-white/15 text-white backdrop-blur-md">
+                Artist Spotlight
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                • {spotlightArtist.genre}
+              </span>
+            </div>
+
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2">
+              {spotlightArtist.name}
+            </h2>
+
+            <p className="text-[13px] sm:text-[14px] text-zinc-300 font-medium leading-relaxed mb-6 line-clamp-2 sm:line-clamp-3">
+              {spotlightArtist.bioSnippet}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
               <button
+                onClick={() => handleItemClick(spotlightArtist.name, spotlightArtist.query, 'artist')}
+                className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-[13px] font-bold hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+              >
+                <Users size={15} />
+                <span>Explore Artist</span>
+              </button>
+
+              <button
+                onClick={() => handlePlayStationDirect({
+                  id: 'spotlight-hits',
+                  name: `${spotlightArtist.name} Hits`,
+                  artist: spotlightArtist.name,
+                  desc: 'Top Hits',
+                  query: `${spotlightArtist.query} top hits`,
+                  trackCount: '50+ Tracks'
+                })}
+                className="flex items-center gap-2 bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/10 px-4 py-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer active:scale-95"
+              >
+                <Play size={14} fill="white" className="ml-0.5" />
+                <span>Play Hits</span>
+              </button>
+
+              <span className="text-[11px] font-mono text-zinc-500 font-semibold ml-2 hidden sm:inline-block">
+                {spotlightArtist.listeners} Listeners
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ Category / Genre Filter Chips ═══ */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2 mb-10">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+                activeCategory === cat.id
+                  ? 'bg-white text-black shadow-md scale-105'
+                  : 'bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white border border-white/[0.04]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ═══ Top Artists Row ═══ */}
+        <section className="mb-14">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+              <h2 className="text-[12px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+                Featured Artists
+              </h2>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => scrollContainer(artistScrollRef, -320)}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={() => scrollContainer(artistScrollRef, 320)}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                aria-label="Scroll right"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div
+            ref={artistScrollRef}
+            className="flex gap-4 sm:gap-6 overflow-x-auto scrollbar-hide pb-4 pt-1 snap-x scroll-smooth"
+          >
+            {filteredArtists.map((artist) => (
+              <div
                 key={artist.name}
                 onClick={() => handleItemClick(artist.name, artist.query, 'artist')}
-                className="flex flex-col items-center gap-3 md:gap-5 shrink-0 group w-24 md:w-36 outline-none"
+                className="snap-start shrink-0 flex flex-col items-center w-28 sm:w-36 md:w-40 group cursor-pointer"
               >
-                <div className="relative">
-                  <div className={`absolute -inset-4 bg-gradient-to-tr ${artist.gradient} rounded-full opacity-0 group-hover:opacity-20 blur-2xl transition-all duration-700 group-hover:scale-110`} />
-                  <div className="w-24 h-24 md:w-36 md:h-36 rounded-full overflow-hidden shadow-2xl border border-white/[0.04] group-hover:border-white/[0.15] transition-all duration-500 relative transform-gpu group-hover:-translate-y-2 group-hover:scale-105 z-10">
-                    <ArtImage 
-                      artist={artist.name} 
-                      type="artist"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end pb-4 items-center">
-                      <Play size={24} fill="currentColor" className="text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 w-5 h-5 md:w-6 md:h-6"/>
+                {/* Circular Avatar with concentric ring */}
+                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full overflow-hidden bg-zinc-900 relative shadow-xl ring-1 ring-white/10 group-hover:ring-white/30 transition-all duration-500 mb-3 group-hover:-translate-y-1">
+                  <ArtImage
+                    artist={artist.name}
+                    type="artist"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                  />
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[1px]">
+                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition-transform">
+                      <Play size={16} fill="black" className="ml-0.5" />
                     </div>
                   </div>
                 </div>
-                <div className="text-center w-full">
-                  <p className="font-bold text-white text-[13px] md:text-[15px] truncate group-hover:text-white transition-colors duration-300">{artist.name}</p>
-                  <p className="text-[9px] md:text-[10px] text-zinc-500 mt-1 md:mt-1.5 tracking-[0.2em] uppercase font-bold">Artist</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
 
-        {/* Popular Radio — Colorful Cards */}
-        <section>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-1.5 h-6 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]"/>
-            <h2 className="text-2xl font-black text-white tracking-tight">Popular Radio</h2>
-          </div>
-          <div className="flex gap-4 md:gap-6 overflow-x-auto custom-scrollbar pb-6 pt-2 px-2 -mx-2">
-            {RADIO_STATIONS.map((station) => (
-              <div key={station.name} className="perspective-1000 shrink-0 cursor-pointer w-[220px] h-32 md:w-[300px] md:h-44">
-                <button
-                  onClick={() => handleItemClick(station.name, station.query, 'radio')}
-                  className="w-full h-full rounded-[20px] md:rounded-[24px] p-4 md:p-6 flex flex-col justify-between text-left transition-all duration-500 shadow-[0_12px_32px_rgba(0,0,0,0.4)] group relative overflow-hidden transform-style-3d hover:[transform:rotateX(5deg)_rotateY(-5deg)_scale(1.02)] border border-white/[0.04] hover:border-white/[0.15]"
-                >
-                  <div className="absolute inset-0 z-0 bg-[#030304]">
-                    <ArtImage 
-                      artist={station.query}
-                      type="genre"
-                      className="w-full h-full object-cover opacity-60 transition-transform duration-1000 group-hover:scale-110 group-hover:opacity-80"
-                    />
-                  </div>
-                  <div className={`absolute inset-0 z-10 bg-gradient-to-br ${station.gradient} opacity-60 mix-blend-overlay group-hover:opacity-80 transition-opacity duration-500`} />
-                  <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#030304]/90 via-[#030304]/40 to-transparent"/>
-                  
-                  <div className="absolute top-3 right-3 md:top-5 md:right-5 bg-black/40 backdrop-blur-md border border-white/[0.08] rounded-full px-2 md:px-3 py-1 md:py-1.5 [transform:translateZ(20px)] shadow-lg flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                    <span className="text-[9px] md:text-[10px] font-black text-white uppercase tracking-widest">Live</span>
-                  </div>
-                  
-                  <div className="relative z-30 mt-auto [transform:translateZ(30px)] pr-10 md:pr-12">
-                    <p className="text-[16px] md:text-xl font-black text-white leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-tight">{station.name}</p>
-                    <p className="text-[11px] md:text-[13px] font-medium text-zinc-300 mt-1 line-clamp-1 drop-shadow-md">{station.desc}</p>
-                  </div>
-                  
-                  <div className="absolute bottom-3 right-3 md:bottom-5 md:right-5 z-30 [transform:translateZ(40px)] w-8 h-8 md:w-12 md:h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 hover:bg-white/30 border border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-                    <Play size={18} fill="currentColor" className="text-white ml-1 w-3.5 h-3.5 md:w-[18px] md:h-[18px]"/>
-                  </div>
-                </button>
+                <h3 className="font-bold text-[13px] sm:text-[14px] text-zinc-200 group-hover:text-white transition-colors truncate w-full text-center tracking-tight">
+                  {artist.name}
+                </h3>
+                <p className="text-[10px] sm:text-[11px] font-medium text-zinc-500 truncate w-full text-center mt-0.5">
+                  {artist.genre}
+                </p>
+                <span className="text-[9px] font-mono text-zinc-600 font-semibold uppercase tracking-wider mt-1">
+                  {artist.listeners}
+                </span>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Popular Albums — Square Cards */}
-        <section>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-1.5 h-6 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]"/>
-            <h2 className="text-2xl font-black text-white tracking-tight">Trending Albums</h2>
+        {/* ═══ Artist Radio & Curated Stations (NO FAKE LIVE PILLS) ═══ */}
+        <section className="mb-14">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+              <h2 className="text-[12px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+                Artist Radio & Stations
+              </h2>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => scrollContainer(radioScrollRef, -340)}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                aria-label="Scroll left"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={() => scrollContainer(radioScrollRef, 340)}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                aria-label="Scroll right"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 pb-6">
-            {POPULAR_ALBUMS.map((album) => (
-              <div key={album.name} className="perspective-1000 cursor-pointer w-full group">
-                <button
-                  onClick={() => handleItemClick(album.name, `${album.name} full album`, 'album')}
-                  className="w-full text-left bg-[#030304]/40 hover:bg-white/[0.02] p-3 md:p-4 rounded-2xl md:rounded-3xl transition-all duration-500 border border-white/[0.04] hover:border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:shadow-[0_24px_64px_rgba(0,0,0,0.6)] transform-style-3d hover:[transform:translateY(-8px)] relative overflow-hidden"
+
+          <div
+            ref={radioScrollRef}
+            className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-hide pb-4 snap-x scroll-smooth"
+          >
+            {RADIO_STATIONS.map((station) => {
+              const isStationLoading = loadingRadioId === station.id;
+
+              return (
+                <div
+                  key={station.id}
+                  onClick={() => handlePlayStationDirect(station)}
+                  className="snap-start shrink-0 w-[240px] sm:w-[280px] p-3 sm:p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.15] transition-all duration-300 group cursor-pointer flex flex-col justify-between shadow-md hover:-translate-y-0.5 select-none"
                 >
-                  <div className="aspect-square bg-zinc-900 rounded-xl md:rounded-2xl mb-3 md:mb-4 relative shadow-2xl overflow-hidden [transform:translateZ(20px)] transition-transform duration-500 group-hover:scale-105 border border-white/[0.04]">
-                    <ArtImage 
-                      artist={album.name} 
-                      type="album"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                      <div className="w-10 h-10 md:w-14 md:h-14 bg-white rounded-full flex items-center justify-center text-zinc-950 shadow-[0_4px_24px_rgba(255,255,255,0.3)] transform scale-75 group-hover:scale-100 transition-all duration-300 hover:scale-110">
-                        <Play size={24} fill="currentColor" className="ml-1 w-4 h-4 md:w-6 md:h-6"/>
+                  <div className="flex items-start gap-3 mb-3">
+                    {/* Real Cover Art */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-zinc-900 shrink-0 relative ring-1 ring-white/10 shadow-sm">
+                      <ArtImage
+                        artist={station.artist}
+                        type="artist"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {isStationLoading ? (
+                          <Loader2 size={16} className="animate-spin text-white" />
+                        ) : (
+                          <Play size={16} fill="white" className="ml-0.5" />
+                        )}
                       </div>
                     </div>
+
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.04]">
+                        Radio
+                      </span>
+                      <h3 className="font-bold text-[14px] sm:text-[15px] text-zinc-100 group-hover:text-white transition-colors truncate mt-1">
+                        {station.name}
+                      </h3>
+                      <p className="text-[11px] font-medium text-zinc-500 truncate mt-0.5">
+                        {station.artist}
+                      </p>
+                    </div>
                   </div>
-                  <div className="[transform:translateZ(10px)] pl-1">
-                    <p className="font-bold text-white text-[13px] md:text-[15px] truncate group-hover:text-white transition-colors drop-shadow-md">{album.name}</p>
-                    <p className="text-[11px] md:text-[13px] text-zinc-400 truncate mt-0.5 font-medium">{album.artist}</p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                    <span className="text-[11px] text-zinc-400 truncate max-w-[180px]">
+                      {station.desc}
+                    </span>
+                    <div className="w-6 h-6 rounded-full bg-white/[0.04] group-hover:bg-white text-zinc-400 group-hover:text-black flex items-center justify-center transition-all">
+                      <Radio size={12} />
+                    </div>
                   </div>
-                </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ═══ Essential & Trending Albums ═══ */}
+        <section>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+              <h2 className="text-[12px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
+                Essential & Trending Albums
+              </h2>
+            </div>
+            <span className="text-[11px] font-medium text-zinc-500">
+              {filteredAlbums.length} Albums
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-5">
+            {filteredAlbums.map((album) => (
+              <div
+                key={album.name}
+                onClick={() => handleItemClick(album.name, album.query, 'album')}
+                className="group p-2.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.12] transition-all duration-300 cursor-pointer flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1"
+              >
+                {/* Album Cover */}
+                <div className="aspect-square rounded-xl overflow-hidden bg-zinc-900 mb-2.5 relative shadow-md ring-1 ring-white/10">
+                  <ArtImage
+                    artist={album.artist}
+                    album={album.name}
+                    type="album"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                  />
+                  {/* Floating Play Button */}
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition-transform">
+                      <Play size={16} fill="black" className="ml-0.5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Album Details */}
+                <div className="px-0.5">
+                  <h3 className="font-bold text-[13px] sm:text-[14px] text-zinc-200 group-hover:text-white transition-colors truncate tracking-tight">
+                    {album.name}
+                  </h3>
+                  <p className="text-[11px] sm:text-[12px] font-medium text-zinc-400 truncate mt-0.5">
+                    {album.artist}
+                  </p>
+                  <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    {album.year} • {album.genre}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

@@ -10,7 +10,8 @@ export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 export interface AudioDBArtist {
   idArtist: string;
   strArtist: string;
-  strBiographyEN: string;
+  strBiography?: string;
+  strBiographyEN?: string;
   intFormedYear: string;
   intMembers: string;
   strStyle: string;
@@ -20,6 +21,13 @@ export interface AudioDBArtist {
   strTwitter: string;
   strArtistThumb: string;
   strArtistLogo: string;
+  strArtistBanner?: string;
+  strArtistFanart?: string;
+  strArtistWideThumb?: string;
+  intFollowers?: string;
+  strCountry?: string;
+  strLabel?: string;
+  strMood?: string;
 }
 
 export interface AudioDBTrack {

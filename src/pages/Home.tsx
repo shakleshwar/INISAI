@@ -6,8 +6,11 @@ import { useAudioStore } from '../store/useAudioStore';
 // Components
 import { HeroSection } from '../components/home/HeroSection';
 import { TopArtists } from '../components/home/TopArtists';
+import { QuickPicks } from '../components/home/QuickPicks';
 import { TopTracksList } from '../components/home/TopTracksList';
-import { MobileGenres } from '../components/home/MobileGenres';
+import { VibesAndMoods } from '../components/home/VibesAndMoods';
+import { NewReleases } from '../components/home/NewReleases';
+import { MoodsAndGenres } from '../components/home/MoodsAndGenres';
 
 const REGIONS = [
   { id: 'Global', label: 'Global' },
@@ -27,14 +30,17 @@ export function Home() {
   } = useAudioStore();
 
   const cachedTrending = useAudioStore(state => state.cachedTrending);
+  const cachedReleases = useAudioStore(state => state.cachedReleases);
   const setCachedData = useAudioStore(state => state.setCachedData);
 
   const [trending, setTrending] = useState<Track[]>(cachedTrending[trendingRegion] || []);
+  const [releases, setReleases] = useState<any[]>(cachedReleases || []);
   const [isLoading, setIsLoading] = useState(() => {
     const hasTrending = cachedTrending[trendingRegion] && cachedTrending[trendingRegion].length > 0;
     return !hasTrending;
   });
   const [isTrendingLoading, setIsTrendingLoading] = useState(false);
+  const [isReleasesLoading, setIsReleasesLoading] = useState(false);
   
   // Greeting based on time of day
   const hour = new Date().getHours();
@@ -47,14 +53,20 @@ export function Home() {
       try {
         const store = useAudioStore.getState();
         
-        if (!store.cachedReleases) {
-          const releasesData = await api.getNewReleases('10');
+        // Fetch fresh releases if not cached
+        if (!store.cachedReleases || store.cachedReleases.length === 0) {
+          setIsReleasesLoading(true);
+          const releasesData = await api.getNewReleases('14');
           if (releasesData && Array.isArray(releasesData) && active) {
+            setReleases(releasesData);
             const currentTrending = useAudioStore.getState().cachedTrending[trendingRegion];
             setCachedData(trendingRegion, currentTrending || [], releasesData);
           }
+        } else if (active) {
+          setReleases(store.cachedReleases);
         }
 
+        // Fetch trending for region if not cached
         const currentTrending = useAudioStore.getState().cachedTrending[trendingRegion];
         if (!currentTrending || currentTrending.length === 0) {
           setIsTrendingLoading(true);
@@ -72,6 +84,7 @@ export function Home() {
         if (active) {
           setIsLoading(false);
           setIsTrendingLoading(false);
+          setIsReleasesLoading(false);
         }
       }
     };
@@ -108,7 +121,7 @@ export function Home() {
     return currentIndex === index && queue[index]?.id === trending[index]?.id && isPlaying;
   };
 
-  const rankedTracks = trending.slice(0, 8);
+  const rankedTracks = trending.slice(0, 12);
   const regionLabel = REGIONS.find(r => r.id === trendingRegion)?.label || 'Global';
 
   if (isLoading) {
@@ -127,7 +140,8 @@ export function Home() {
   }
 
   return (
-    <div className="animate-fade-in pb-12">
+    <div className="animate-fade-in pb-32 md:pb-24">
+      {/* 3D Coverflow Hero */}
       <HeroSection 
         greeting={greeting}
         trending={trending}
@@ -137,21 +151,49 @@ export function Home() {
         onPlayTrack={handlePlayTrack}
       />
 
+      {/* Top Artists Carousel */}
       <TopArtists trending={trending} />
       
-      <div className="px-6 md:px-10 space-y-12">
-        <div className="max-w-[1200px]">
-          <TopTracksList 
-            regionLabel={regionLabel}
-            isTrendingLoading={isTrendingLoading}
-            rankedTracks={rankedTracks}
-            likedSongs={likedSongs}
-            onPlayTrack={handlePlayTrack}
-            isTrackPlaying={isTrackPlaying}
-            toggleLikedSong={toggleLikedSong}
-          />
-          <MobileGenres />
+      {/* Main Content Area */}
+      <div className="px-4 sm:px-6 md:px-10 max-w-[1400px] mx-auto space-y-10 sm:space-y-12">
+        {/* Quick Picks */}
+        <QuickPicks 
+          tracks={trending}
+          likedSongs={likedSongs}
+          onPlayTrack={handlePlayTrack}
+          isTrackPlaying={isTrackPlaying}
+          toggleLikedSong={toggleLikedSong}
+        />
+
+        {/* Dual-Column Section on Desktop / Stack on Mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
+          {/* Top Charts Column */}
+          <div>
+            <TopTracksList 
+              regionLabel={regionLabel}
+              isTrendingLoading={isTrendingLoading}
+              rankedTracks={rankedTracks}
+              likedSongs={likedSongs}
+              onPlayTrack={handlePlayTrack}
+              isTrackPlaying={isTrackPlaying}
+              toggleLikedSong={toggleLikedSong}
+            />
+          </div>
+
+          {/* Curated Radio Stations Column */}
+          <div>
+            <VibesAndMoods />
+          </div>
         </div>
+
+        {/* Fresh Drops & New Albums Carousel */}
+        <NewReleases 
+          releases={releases}
+          isLoading={isReleasesLoading}
+        />
+
+        {/* Genres & Categories Explorer */}
+        <MoodsAndGenres />
       </div>
     </div>
   );

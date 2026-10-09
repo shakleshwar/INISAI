@@ -34,15 +34,15 @@ export function HeroSection({
   if (trending.length === 0) return null;
 
   return (
-    <section className="pt-10 px-6 md:px-10">
-      <div className="mb-8">
+    <section className="pt-12 sm:pt-14 md:pt-16 px-4 sm:px-6 md:px-10">
+      <div className="mb-6 sm:mb-8">
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
           {greeting}
         </h1>
         <p className="text-sm font-medium text-zinc-400">Here's what's trending right now</p>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 sm:mb-6">
         <h2 className="text-[12px] font-bold text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-3">
           <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.5)]"/>
           Featured Releases
@@ -54,7 +54,7 @@ export function HeroSection({
             <button
               key={region.id}
               onClick={() => onRegionChange(region.id)}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 active:scale-95 ${
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 active:scale-[0.96] cursor-pointer ${
                 trendingRegion === region.id
                   ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-105'
                   : 'bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white border border-white/[0.02] hover:border-white/[0.08]'

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Play, Pause, Loader2, Music, History, X, Heart, LayoutGrid, List, ArrowRight, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Play, Pause, Loader2, Music, History, X, Heart, LayoutGrid, List, ArrowRight, Clock, CheckCircle, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
+import type { AudioDBArtist } from '../services/api';
 import { useAudioStore } from '../store/useAudioStore';
 import type { Track } from '../types';
 import { ArtImage } from '../components/ui/ArtImage';
@@ -25,14 +27,14 @@ const QUICK_SEARCHES = [
 ];
 
 const BROWSE_GENRES = [
- { name: 'Pop Hits', accent: 'from-rose-500/30 to-rose-900/10', accentBorder: 'hover:border-rose-500/30', artist: 'Dua Lipa', album: 'Future Nostalgia', description: 'Chart-topping bangers', size: 'tall' },
- { name: 'Chill Vibes', accent: 'from-sky-500/30 to-sky-900/10', accentBorder: 'hover:border-sky-500/30', artist: 'The xx', album: 'I See You', description: 'Relax & unwind', size: 'short' },
- { name: 'Rock Classics', accent: 'from-amber-500/30 to-amber-900/10', accentBorder: 'hover:border-amber-500/30', artist: 'Nirvana', album: 'Nevermind', description: 'Timeless anthems', size: 'short' },
- { name: 'Hip-Hop', accent: 'from-violet-500/30 to-violet-900/10', accentBorder: 'hover:border-violet-500/30', artist: 'Kanye West', album: 'Graduation', description: 'Beats & bars', size: 'tall' },
- { name: 'Electronic', accent: 'from-cyan-500/30 to-cyan-900/10', accentBorder: 'hover:border-cyan-500/30', artist: 'Disclosure', album: 'Settle', description: 'Drop the bass', size: 'short' },
- { name: 'Indie', accent: 'from-emerald-500/30 to-emerald-900/10', accentBorder: 'hover:border-emerald-500/30', artist: 'Tame Impala', album: 'Currents', description: 'Alternative sounds', size: 'tall' },
- { name: 'K-Pop', accent: 'from-pink-500/30 to-pink-900/10', accentBorder: 'hover:border-pink-500/30', artist: 'BLACKPINK', album: 'THE ALBUM', description: 'Global phenomenon', size: 'short' },
- { name: 'R&B Soul', accent: 'from-orange-500/30 to-orange-900/10', accentBorder: 'hover:border-orange-500/30', artist: 'Frank Ocean', album: 'Blonde', description: 'Smooth & soulful', size: 'short' },
+ { name: 'Pop Hits', accent: 'from-rose-950/40 to-zinc-950/20', accentBorder: 'hover:border-rose-400/30', artist: 'Dua Lipa', album: 'Future Nostalgia', description: 'Chart-topping bangers', size: 'tall' },
+ { name: 'Chill Vibes', accent: 'from-slate-800/40 to-zinc-950/20', accentBorder: 'hover:border-slate-400/30', artist: 'The xx', album: 'I See You', description: 'Relax & unwind', size: 'short' },
+ { name: 'Rock Classics', accent: 'from-amber-950/40 to-stone-950/20', accentBorder: 'hover:border-amber-400/30', artist: 'Nirvana', album: 'Nevermind', description: 'Timeless anthems', size: 'short' },
+ { name: 'Hip-Hop', accent: 'from-stone-800/45 to-zinc-950/30', accentBorder: 'hover:border-stone-400/30', artist: 'Kanye West', album: 'Graduation', description: 'Beats & bars', size: 'tall' },
+ { name: 'Electronic', accent: 'from-blue-950/45 to-zinc-950/20', accentBorder: 'hover:border-blue-400/30', artist: 'Disclosure', album: 'Settle', description: 'Club & synth waves', size: 'short' },
+ { name: 'Indie', accent: 'from-emerald-950/40 to-zinc-950/20', accentBorder: 'hover:border-emerald-400/30', artist: 'Tame Impala', album: 'Currents', description: 'Alternative sounds', size: 'tall' },
+ { name: 'K-Pop', accent: 'from-fuchsia-950/40 to-zinc-950/20', accentBorder: 'hover:border-fuchsia-400/30', artist: 'BLACKPINK', album: 'THE ALBUM', description: 'Global phenomenon', size: 'short' },
+ { name: 'R&B Soul', accent: 'from-orange-950/40 to-zinc-950/20', accentBorder: 'hover:border-orange-400/30', artist: 'Frank Ocean', album: 'Blonde', description: 'Smooth & soulful', size: 'short' },
 ];
 
 /* ─────────────────────────────────────────────
@@ -40,9 +42,11 @@ const BROWSE_GENRES = [
    ───────────────────────────────────────────── */
 
 export function Library() {
+ const navigate = useNavigate();
  const [query, setQuery] = useState('');
  const [isSearching, setIsSearching] = useState(false);
  const [results, setResults] = useState<Track[]>([]);
+ const [searchedArtist, setSearchedArtist] = useState<AudioDBArtist | null>(null);
  const [error, setError] = useState('');
  const [history, setHistory] = useState<string[]>([]);
  const [showHistory, setShowHistory] = useState(false);
@@ -127,10 +131,28 @@ export function Library() {
   setIsSearching(true);
   setError('');
   setShowHistory(false);
+  setSearchedArtist(null);
   saveToHistory(searchTerm);
   try {
-   const data = await api.searchOnlineTracks(searchTerm);
-   setResults(data);
+   const [data, initialArtist] = await Promise.all([
+    api.searchOnlineTracks(searchTerm),
+    api.getAudioDBArtist(searchTerm)
+   ]);
+   const found = data || [];
+   setResults(found);
+
+   let artistMatch = initialArtist;
+   if (!artistMatch && found.length > 0) {
+    const topArtist = found[0]?.artist;
+    if (topArtist && topArtist.toLowerCase() !== searchTerm.toLowerCase()) {
+      try {
+        artistMatch = await api.getAudioDBArtist(topArtist);
+      } catch {
+        // ignore
+      }
+    }
+   }
+   setSearchedArtist(artistMatch);
   } catch (err) {
    console.error(err);
    setError('Failed to fetch search results. Please try again.');
@@ -381,6 +403,96 @@ export function Library() {
       transition={{ duration: 0.25 }}
       className="px-4 md:px-8 lg:px-10 pb-8">
       
+      {/* ── ARTIST SPOTLIGHT BANNER (When search matches an artist) ── */}
+      {searchedArtist && (
+        <div className="relative rounded-3xl overflow-hidden mb-8 border border-white/10 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950">
+          {/* Panoramic background image */}
+          <div className="absolute inset-0 z-0">
+            {searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb ? (
+              <img
+                src={searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb}
+                alt={searchedArtist.strArtist}
+                className="w-full h-full object-cover brightness-[0.4] filter contrast-110"
+              />
+            ) : (
+              <ArtImage
+                artist={searchedArtist.strArtist}
+                type="artist"
+                className="w-full h-full object-cover brightness-[0.35]"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-0)] via-[var(--color-surface-0)]/60 to-black/30" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-surface-0)] via-transparent to-[var(--color-surface-0)]/70" />
+          </div>
+
+          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5 min-w-0">
+              {/* Artist Avatar */}
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-zinc-900 shrink-0 border-2 border-white/20 shadow-2xl relative">
+                {searchedArtist.strArtistThumb ? (
+                  <img src={searchedArtist.strArtistThumb} alt={searchedArtist.strArtist} className="w-full h-full object-cover" />
+                ) : (
+                  <ArtImage artist={searchedArtist.strArtist} type="artist" className="w-full h-full object-cover" />
+                )}
+              </div>
+
+              {/* Artist Info */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30 backdrop-blur-md">
+                    <CheckCircle size={10} className="text-blue-400" />
+                    Verified Artist
+                  </span>
+                  {searchedArtist.strGenre && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-zinc-300 border border-white/10">
+                      {searchedArtist.strGenre}
+                    </span>
+                  )}
+                  {searchedArtist.strCountry && (
+                    <span className="text-[11px] font-medium text-zinc-400 hidden sm:inline-flex items-center gap-1">
+                      <MapPin size={11} className="text-zinc-500" />
+                      {searchedArtist.strCountry}
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight drop-shadow-md truncate">
+                  {searchedArtist.strArtist}
+                </h2>
+
+                {(searchedArtist.strBiography || searchedArtist.strBiographyEN) && (
+                  <p className="text-xs md:text-sm text-zinc-300 line-clamp-2 max-w-2xl mt-1.5 leading-relaxed font-normal">
+                    {searchedArtist.strBiography || searchedArtist.strBiographyEN}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
+              <button
+                onClick={() => {
+                  setQueue(results);
+                  playTrack(0);
+                }}
+                className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
+              >
+                <Play size={14} fill="currentColor" />
+                <span>Play Top Songs</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/albums', { state: { artist: searchedArtist.strArtist } })}
+                className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/15 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md cursor-pointer"
+              >
+                <span>Full Profile</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Results header */}
       <div className="flex items-center justify-between mb-6">
        <div>

@@ -33,5 +33,7 @@ __pycache__
 
 # Antigravity AI Skills & Agent Configs
 .agents/
+.codex/
+skills-lock.json
 server/.runtime/
 output/

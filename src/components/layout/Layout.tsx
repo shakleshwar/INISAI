@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
@@ -26,7 +27,13 @@ export function Layout() {
           <div className="sticky top-0 z-20 h-8 bg-gradient-to-b from-[var(--color-surface-0)] to-transparent pointer-events-none shrink-0" />
           
           <div className={`flex-1 -mt-8 relative z-10 ${paddingClass}`}>
-            <Outlet />
+            <Suspense fallback={
+              <div className="w-full min-h-[300px] flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         
