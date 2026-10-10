@@ -147,7 +147,7 @@ export function QueueView({ onClose }: QueueViewProps) {
           {nextUpIndices.length > 0 && (
             <button 
               onClick={clearQueue}
-              className="text-[12px] font-semibold text-red-400 hover:text-red-300 transition-colors bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full active:scale-95 shadow-sm"
+              className="text-[12px] font-semibold text-red-400 hover:text-red-300 transition-all duration-150 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full active:scale-[0.96] shadow-sm"
               title="Clear all upcoming tracks"
             >
               Clear Queue
@@ -156,7 +156,7 @@ export function QueueView({ onClose }: QueueViewProps) {
 
           <button 
             onClick={onClose}
-            className="w-10 h-10 bg-white/[0.06] hover:bg-white/10 active:scale-90 border border-white/[0.08] rounded-full text-zinc-300 hover:text-white flex items-center justify-center transition-all duration-200"
+            className="w-10 h-10 bg-white/[0.06] hover:bg-white/10 active:scale-[0.96] border border-white/[0.08] rounded-full text-zinc-300 hover:text-white flex items-center justify-center transition-all duration-150"
             aria-label="Close Queue"
           >
             <X size={20} />
@@ -183,7 +183,7 @@ export function QueueView({ onClose }: QueueViewProps) {
                   <div className="flex items-center gap-3.5 w-full">
                     {/* Artwork */}
                     <div 
-                      className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-xl overflow-hidden shadow-md shrink-0 border border-white/10 cursor-pointer active:scale-95 transition-transform"
+                      className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-xl overflow-hidden shadow-md shrink-0 border border-white/10 cursor-pointer active:scale-[0.96] transition-transform duration-150"
                       onClick={onClose}
                       title="Tap to return to player"
                     >
@@ -222,7 +222,7 @@ export function QueueView({ onClose }: QueueViewProps) {
                     {/* Like Button */}
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleLikedSong(currentTrack); }}
-                      className={`p-2 rounded-full transition-all active:scale-90 ${
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-[0.96] hover:bg-white/[0.06] ${
                         isLiked ? 'text-[#ff3366]' : 'text-zinc-500 hover:text-zinc-300'
                       }`}
                       aria-label="Like track"
@@ -266,26 +266,26 @@ export function QueueView({ onClose }: QueueViewProps) {
                   <div className="flex items-center justify-between w-full pt-1.5 border-t border-white/[0.06]">
                     <button 
                       onClick={toggleShuffle} 
-                      className={`p-2 transition-all active:scale-90 rounded-full ${
-                        isShuffled ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white'
+                      className={`w-9 h-9 flex items-center justify-center transition-all duration-150 active:scale-[0.96] rounded-full ${
+                        isShuffled ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white hover:bg-white/[0.06]'
                       }`}
                       title="Shuffle"
                     >
                       <Shuffle size={18} />
                     </button>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <button 
                         onClick={prev} 
-                        className="p-1.5 text-zinc-300 hover:text-white transition-all active:scale-90"
+                        className="w-9 h-9 flex items-center justify-center text-zinc-300 hover:text-white transition-all duration-150 active:scale-[0.96] hover:bg-white/[0.06] rounded-full"
                         title="Previous"
                       >
-                        <SkipBack size={22} fill="currentColor" />
+                        <SkipBack size={20} fill="currentColor" />
                       </button>
 
                       <button 
                         onClick={togglePlay} 
-                        className="w-11 h-11 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_16px_rgba(255,255,255,0.25)]"
+                        className="w-11 h-11 bg-white text-black rounded-full flex items-center justify-center hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-[0_0_16px_rgba(255,255,255,0.25)]"
                         title={isPlaying ? "Pause" : "Play"}
                       >
                         {isPlaying ? (
@@ -297,17 +297,17 @@ export function QueueView({ onClose }: QueueViewProps) {
 
                       <button 
                         onClick={next} 
-                        className="p-1.5 text-zinc-300 hover:text-white transition-all active:scale-90"
+                        className="w-9 h-9 flex items-center justify-center text-zinc-300 hover:text-white transition-all duration-150 active:scale-[0.96] hover:bg-white/[0.06] rounded-full"
                         title="Next"
                       >
-                        <SkipForward size={22} fill="currentColor" />
+                        <SkipForward size={20} fill="currentColor" />
                       </button>
                     </div>
 
                     <button 
                       onClick={toggleLoop} 
-                      className={`p-2 transition-all active:scale-90 rounded-full ${
-                        loopMode !== 'off' ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white'
+                      className={`w-9 h-9 flex items-center justify-center transition-all duration-150 active:scale-[0.96] rounded-full ${
+                        loopMode !== 'off' ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white hover:bg-white/[0.06]'
                       }`}
                       title="Repeat"
                     >
@@ -358,7 +358,7 @@ export function QueueView({ onClose }: QueueViewProps) {
                   </div>
                   <button
                     onClick={() => toggleLikedSong(currentTrack)}
-                    className={`p-3 rounded-full transition-all hover:scale-110 active:scale-95 hover:bg-white/[0.08] ${
+                    className={`p-3 rounded-full transition-all duration-150 hover:scale-105 active:scale-[0.96] hover:bg-white/[0.08] ${
                       isLiked ? 'text-[#ff3366]' : 'text-zinc-500 hover:text-white'
                     }`}
                     title={isLiked ? "Unlike" : "Like"}
@@ -407,7 +407,7 @@ export function QueueView({ onClose }: QueueViewProps) {
                 <div className="flex items-center justify-between w-full px-2 mb-5">
                   <button 
                     onClick={toggleShuffle} 
-                    className={`p-3 rounded-full transition-all hover:scale-110 active:scale-95 ${
+                    className={`p-3 rounded-full transition-all duration-150 active:scale-[0.96] ${
                       isShuffled ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
                     }`}
                     title="Shuffle"
@@ -417,15 +417,15 @@ export function QueueView({ onClose }: QueueViewProps) {
 
                   <button 
                     onClick={prev} 
-                    className="p-2 text-zinc-300 hover:text-white transition-all hover:scale-110 active:scale-90"
+                    className="p-2.5 text-zinc-300 hover:text-white transition-all duration-150 active:scale-[0.96] hover:bg-white/[0.05] rounded-full"
                     title="Previous track"
                   >
-                    <SkipBack size={28} fill="currentColor" />
+                    <SkipBack size={26} fill="currentColor" />
                   </button>
 
                   <button 
                     onClick={togglePlay} 
-                    className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                    className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
                     title={isPlaying ? "Pause" : "Play"}
                   >
                     {isPlaying ? (
@@ -437,15 +437,15 @@ export function QueueView({ onClose }: QueueViewProps) {
 
                   <button 
                     onClick={next} 
-                    className="p-2 text-zinc-300 hover:text-white transition-all hover:scale-110 active:scale-90"
+                    className="p-2.5 text-zinc-300 hover:text-white transition-all duration-150 active:scale-[0.96] hover:bg-white/[0.05] rounded-full"
                     title="Next track"
                   >
-                    <SkipForward size={28} fill="currentColor" />
+                    <SkipForward size={26} fill="currentColor" />
                   </button>
 
                   <button 
                     onClick={toggleLoop} 
-                    className={`p-3 rounded-full transition-all hover:scale-110 active:scale-95 ${
+                    className={`p-3 rounded-full transition-all duration-150 active:scale-[0.96] ${
                       loopMode !== 'off' ? 'text-[#ff3366] bg-[#ff3366]/10' : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
                     }`}
                     title="Repeat"
@@ -578,7 +578,7 @@ export function QueueView({ onClose }: QueueViewProps) {
                                 {/* Remove Track Button */}
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); removeFromQueue(originalIndex); }}
-                                  className="w-9 h-9 rounded-full flex shrink-0 items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-all active:scale-90"
+                                  className="w-9 h-9 rounded-full flex shrink-0 items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-red-400/10 transition-all duration-150 active:scale-[0.96]"
                                   title="Remove from queue"
                                   aria-label="Remove from queue"
                                 >

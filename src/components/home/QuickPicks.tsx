@@ -24,7 +24,7 @@ export function QuickPicks({
   const picks = tracks.slice(0, 6);
 
   return (
-    <section className="mt-4 mb-8 sm:mb-12">
+    <section className="relative">
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
@@ -83,7 +83,7 @@ export function QuickPicks({
                       ))}
                     </div>
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                    <div className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center shadow-lg transform scale-95 group-hover:scale-100 transition-transform">
                       <Play size={12} fill="currentColor" className="ml-0.5 text-black" />
                     </div>
                   )}
@@ -114,10 +114,10 @@ export function QuickPicks({
               {toggleLikedSong && (
                 <button
                   type="button"
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 cursor-pointer ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 active:scale-[0.96] cursor-pointer ${
                     isLiked
                       ? 'text-white opacity-100'
-                      : 'text-zinc-600 hover:text-zinc-300 opacity-0 group-hover:opacity-100'
+                      : 'text-zinc-600 hover:text-zinc-300 opacity-0 group-hover:opacity-100 hover:bg-white/[0.06]'
                   }`}
                   onClick={e => {
                     e.stopPropagation();

@@ -59,7 +59,8 @@ export function MobileGenres() {
       <div className={`absolute left-0 top-[52px] bottom-0 w-24 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent flex items-center justify-start pl-4 z-10 pointer-events-none transition-opacity duration-300 ${canScrollLeft ? 'opacity-100' : 'opacity-0'}`}>
         <button 
           onClick={scrollLeft}
-          className="w-8 h-8 bg-black/80 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-90 transition-all shadow-lg"
+          aria-label="Scroll genres left"
+          className="w-9 h-9 bg-black/80 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-[0.96] transition-all duration-150 shadow-lg"
         >
           <ChevronLeft size={20} />
         </button>
@@ -69,7 +70,8 @@ export function MobileGenres() {
       <div className={`absolute right-0 top-[52px] bottom-0 w-24 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent flex items-center justify-end pr-4 z-10 pointer-events-none transition-opacity duration-300 ${canScrollRight ? 'opacity-100' : 'opacity-0'}`}>
         <button 
           onClick={scrollRight}
-          className="w-8 h-8 bg-black/80 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-90 transition-all shadow-lg"
+          aria-label="Scroll genres right"
+          className="w-9 h-9 bg-black/80 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-[0.96] transition-all duration-150 shadow-lg"
         >
           <ChevronRight size={20} />
         </button>

@@ -11,8 +11,8 @@ import { useAudioStore } from '../../store/useAudioStore';
 export function Layout() {
   const currentTrack = useAudioStore(state => state.queue[state.currentIndex]);
   
-  // on mobile: if track exists, player is shown, need 180px. if not, just 100px (for nav).
-  const paddingClass = currentTrack ? 'pb-[180px] md:pb-[100px]' : 'pb-[100px] md:pb-[100px]';
+  // Responsive bottom clearance: accounts for floating MobilePlayer (156px) + MobileNav (88px) or desktop BottomPlayer (96px)
+  const paddingClass = currentTrack ? 'pb-[168px] md:pb-[96px]' : 'pb-[96px] md:pb-[96px]';
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-surface-0)] text-zinc-100 font-sans relative">

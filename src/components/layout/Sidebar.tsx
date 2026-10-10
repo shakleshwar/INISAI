@@ -16,7 +16,6 @@ interface NavItem {
 export function Sidebar() {
   const location = useLocation();
   const playlists = useAudioStore((state) => state.playlists);
-  const setSettingsOpen = useAudioStore((state) => state.setSettingsOpen);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const discoverItems: NavItem[] = [
@@ -37,7 +36,7 @@ export function Sidebar() {
       key={item.label}
       to={item.disabled ? location.pathname : item.to}
       onClick={item.disabled ? (e) => e.preventDefault() : undefined}
-      className="group relative flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+      className="group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors active:scale-[0.98] duration-150"
     >
       {({ isActive }) => {
         const active = !item.disabled && isActive;
@@ -62,7 +61,7 @@ export function Sidebar() {
     <aside className="w-64 bg-[var(--color-bg-panel)] hidden md:flex flex-col h-full shrink-0 border-r border-white/5 z-20 relative pb-24">
       {/* Logo */}
       <div className="px-6 pt-8 pb-8 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner transition-transform duration-500 hover:scale-105">
+        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner transition-transform duration-200 hover:scale-105 active:scale-[0.96] cursor-pointer">
           <Music2 size={20} className="text-white" />
         </div>
         <h1 className="text-xl font-bold tracking-tight text-white">
@@ -101,7 +100,7 @@ export function Sidebar() {
           <div className="space-y-1">
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 border-dashed text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors group"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 border-dashed text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all active:scale-[0.97] duration-150 group cursor-pointer"
             >
               <Plus size={16} className="text-zinc-500 group-hover:text-white transition-colors" />
               <span>New playlist</span>
@@ -113,7 +112,7 @@ export function Sidebar() {
                 <NavLink
                   key={playlist.id}
                   to={`/playlist/${playlist.id}`}
-                  className="group relative flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                  className="group relative flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors active:scale-[0.98] duration-150"
                 >
                 {({ isActive }) => (
                   <>
@@ -144,13 +143,24 @@ export function Sidebar() {
 
       {/* FOOTER */}
       <div className="px-4 py-4 border-t border-white/5 relative z-10 shrink-0 bg-[var(--color-bg-panel)]">
-        <button 
-          onClick={() => setSettingsOpen(true)}
-          className="group flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium text-zinc-500 hover:text-white hover:bg-white/5 transition-colors w-full"
+        <NavLink 
+          to="/settings"
+          className="group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] duration-150 w-full cursor-pointer"
         >
-          <Settings size={18} className="text-zinc-500 group-hover:text-zinc-300 transition-colors group-hover:rotate-90" />
-          <span>Settings</span>
-        </button>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-settings-pill"
+                  className="absolute inset-0 bg-white/10 rounded-xl"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <Settings size={18} className={`relative z-10 transition-transform duration-300 group-hover:rotate-45 ${isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+              <span className={`relative z-10 ${isActive ? 'text-white font-semibold' : 'text-zinc-500 group-hover:text-zinc-300'}`}>Settings</span>
+            </>
+          )}
+        </NavLink>
       </div>
 
       <CreatePlaylistModal 

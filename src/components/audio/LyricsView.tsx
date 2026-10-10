@@ -166,17 +166,30 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
 
             {/* In-Header Transport Controls */}
-            <div className="flex items-center gap-2 md:gap-6">
-              <button onClick={prev} className="p-2 md:p-3 text-zinc-400 hover:text-white transition-colors active:scale-90">
+            <div className="flex items-center gap-1.5 md:gap-4">
+              <button 
+                onClick={prev} 
+                aria-label="Previous track"
+                className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all duration-150 active:scale-[0.96]"
+              >
                 <SkipBack size={18} fill="currentColor" className="md:w-5 md:h-5" />
               </button>
               <button 
                 onClick={togglePlay} 
-                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full text-white bg-transparent hover:bg-white/5 hover:scale-105 transition-all active:scale-95 shrink-0"
+                aria-label={isPlaying ? "Pause" : "Play"}
+                className="w-11 h-11 md:w-12 md:h-12 flex items-center justify-center rounded-full text-zinc-950 bg-white hover:bg-zinc-200 transition-all duration-150 shadow-[0_0_20px_rgba(255,255,255,0.25)] active:scale-[0.96] shrink-0"
               >
-                {isPlaying ? <Pause size={18} fill="currentColor" className="md:w-5 md:h-5" /> : <Play size={18} className="ml-1 md:w-5 md:h-5" fill="currentColor" />}
+                {isPlaying ? (
+                  <Pause size={18} fill="currentColor" className="md:w-5 md:h-5" />
+                ) : (
+                  <Play size={18} fill="currentColor" className="ml-0.5 md:w-5 md:h-5" />
+                )}
               </button>
-              <button onClick={next} className="p-2 md:p-3 text-zinc-400 hover:text-white transition-colors active:scale-90">
+              <button 
+                onClick={next} 
+                aria-label="Next track"
+                className="w-10 h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all duration-150 active:scale-[0.96]"
+              >
                 <SkipForward size={18} fill="currentColor" className="md:w-5 md:h-5" />
               </button>
             </div>
@@ -185,7 +198,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <div className="flex items-center gap-2 md:hidden shrink-0">
               <button 
                 onClick={onClose}
-                className="p-3 bg-white/[0.04] hover:bg-white/[0.08] rounded-full transition-colors text-white shrink-0 active:scale-90"
+                aria-label="Close lyrics"
+                className="w-10 h-10 flex items-center justify-center bg-white/[0.06] hover:bg-white/10 rounded-full transition-all duration-150 text-white shrink-0 active:scale-[0.96]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -194,8 +208,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
           <div className="flex items-center gap-4 overflow-x-auto no-scrollbar md:pb-0">
             {metadata?.mood && (
-              <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-md shrink-0">
-                <Activity className="w-4 h-4 text-white" />
+              <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-full shrink-0">
+                <Activity className="w-3.5 h-3.5 text-white" />
                 <span className="text-[11px] font-bold uppercase tracking-wider text-white">
                   {metadata.mood.sentiment || 'Neutral'}
                 </span>
@@ -205,7 +219,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <div className="hidden md:flex items-center gap-2 shrink-0">
               <button 
                 onClick={onClose}
-                className="p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.04] rounded-full transition-colors text-white shrink-0 active:scale-90"
+                aria-label="Close lyrics"
+                className="w-11 h-11 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-full transition-all duration-150 text-white shrink-0 active:scale-[0.96]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -231,7 +246,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               style={{ width: `${(progress / (duration || 1)) * 100}%` }}
             />
           </div>
-          <div className="flex justify-between text-[11px] font-mono-nums font-bold text-zinc-500 tracking-wider">
+          <div className="flex justify-between text-[11px] font-mono tabular-nums font-bold text-zinc-500 tracking-wider">
             <span className="text-white">{formatTime(progress)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -294,15 +309,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           {!isSynced && syncedLines.length > 0 && (
             <button
               onClick={() => setIsSynced(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-950 text-[13px] font-black uppercase tracking-wider rounded-md shadow-[0_8px_24px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-950 text-[13px] font-black uppercase tracking-wider rounded-full shadow-[0_8px_24px_rgba(255,255,255,0.2)] hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150"
             >
               Sync Lyrics
             </button>
           )}
           <button 
             onClick={() => setIsFullMode(!isFullMode)}
-            className="hidden md:flex p-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.04] text-white/50 hover:text-white rounded-full transition-all active:scale-90 backdrop-blur-md"
+            className="hidden md:flex w-11 h-11 items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/60 hover:text-white rounded-full transition-all duration-150 active:scale-[0.96] backdrop-blur-md"
             title={isFullMode ? "Exit Full Mode" : "Full Mode"}
+            aria-label={isFullMode ? "Exit Full Mode" : "Full Mode"}
           >
             {isFullMode ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>

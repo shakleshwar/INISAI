@@ -46,8 +46,20 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
             }
             setSyncedLines(parsed);
           } else if (res.data.plainLyrics) {
-            const firstLine = res.data.plainLyrics.split('\n').find((l: string) => l.trim().length > 0) || "Lyrics available";
-            setSyncedLines([{ start_time: 0, text: firstLine }]);
+            const raw = res.data.plainLyrics
+              .split('\n')
+              .map((l: string) => l.trim())
+              .filter((l: string) => l.length > 0);
+            
+            if (raw.length > 0) {
+              const parsed: SyncedLine[] = raw.map((text: string, index: number) => ({
+                start_time: index * 4,
+                text
+              }));
+              setSyncedLines(parsed);
+            } else {
+              setSyncedLines([]);
+            }
           } else {
             setSyncedLines([]);
           }
@@ -65,37 +77,63 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
     return () => { isMounted = false; };
   }, [currentTrack]);
 
+  // Loading skeleton with fixed 2-line structure
   if (loading) {
     return (
       <div 
-        className="w-full h-[64px] bg-white/[0.03] rounded-2xl px-4 py-3 flex flex-col justify-center cursor-pointer border border-white/[0.06] shadow-lg relative overflow-hidden backdrop-blur-xl"
+        className="w-full h-[62px] bg-white/[0.035] rounded-2xl px-4 py-2.5 flex items-center justify-between cursor-pointer border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.3)] relative overflow-hidden backdrop-blur-xl"
         onClick={onClick}
       >
-        <div className="w-3/4 h-4 bg-white/[0.05] rounded-md animate-pulse mb-1.5" />
-        <div className="w-1/2 h-3 bg-white/[0.03] rounded-md animate-pulse" />
+        <div className="flex flex-col min-w-0 flex-1 justify-center">
+          <div className="w-3/5 h-4 bg-white/[0.08] rounded-md animate-pulse mb-1.5" />
+          <div className="w-2/5 h-3 bg-white/[0.04] rounded-md animate-pulse" />
+        </div>
+        <ChevronRight size={16} className="text-white/20 shrink-0" />
       </div>
     );
   }
 
-  if (syncedLines.length === 0) {
-    return null;
-  }
-
-  // Find current line
+  // Find active line index based on playback progress
   const activeIndex = syncedLines.findIndex((line, index) => {
     const nextLine = syncedLines[index + 1];
     return progress >= line.start_time && (!nextLine || progress < nextLine.start_time);
   });
-  
-  const currentLine = activeIndex >= 0 ? syncedLines[activeIndex].text : null;
-  const nextLine = activeIndex >= 0 && activeIndex + 1 < syncedLines.length ? syncedLines[activeIndex + 1].text : '';
+
+  // Always compute TWO lines (Line 1: current active, Line 2: upcoming/continuation)
+  let line1 = '';
+  let line2 = '';
+
+  if (syncedLines.length >= 2) {
+    if (activeIndex < 0) {
+      // Before first timed lyric begins (intro): display first and second upcoming lines
+      line1 = syncedLines[0].text;
+      line2 = syncedLines[1].text;
+    } else {
+      // Normal playback: current line
+      line1 = syncedLines[activeIndex].text;
+      if (activeIndex + 1 < syncedLines.length) {
+        // Next line
+        line2 = syncedLines[activeIndex + 1].text;
+      } else {
+        // Final line reached: graceful outro continuation so it never collapses to single line
+        line2 = currentTrack.artist ? `♪ ${currentTrack.artist}` : '♪ Outro';
+      }
+    }
+  } else if (syncedLines.length === 1) {
+    line1 = syncedLines[0].text;
+    line2 = currentTrack.artist ? `♪ ${currentTrack.artist}` : 'Tap to view full lyrics';
+  } else {
+    // If no synced lyrics available from API
+    line1 = currentTrack.title || 'Lyrics';
+    line2 = currentTrack.artist ? `by ${currentTrack.artist}` : 'Tap to open full lyrics';
+  }
 
   return (
     <div 
-      className="w-full bg-white/[0.035] hover:bg-white/[0.06] active:scale-[0.98] rounded-2xl px-4 py-3 flex items-center justify-between cursor-pointer border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] relative overflow-hidden transition-all duration-300 group"
+      className="w-full min-h-[62px] h-[62px] bg-white/[0.04] hover:bg-white/[0.07] active:scale-[0.985] rounded-2xl px-4 py-2 flex items-center justify-between cursor-pointer border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] relative overflow-hidden transition-all duration-300 group select-none"
       onClick={onClick}
     >
-      {/* Dynamic Cover Artwork Glow */}
+      {/* Dynamic Cover Artwork Ambient Glow */}
       {currentTrack.coverArtUrl && (
         <>
           <div 
@@ -107,30 +145,24 @@ export function MiniLyrics({ currentTrack, progress, onClick }: MiniLyricsProps)
               filter: 'blur(30px) saturate(200%) brightness(0.7)'
             }}
           />
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xl pointer-events-none" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-xl pointer-events-none" />
         </>
       )}
 
       <div className="w-full flex items-center justify-between z-10 relative gap-3">
-        <div className="flex flex-col min-w-0 flex-1">
-          {currentLine ? (
-            <>
-              <span className="text-[15px] font-bold text-white tracking-tight leading-snug line-clamp-1 drop-shadow-sm">
-                {currentLine}
-              </span>
-              {nextLine && (
-                <span className="text-[12px] font-medium text-white/50 mt-0.5 truncate">
-                  {nextLine}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-[14px] font-semibold text-white/80 truncate">
-              {syncedLines[0]?.text || 'Tap to view full lyrics'}
-            </span>
-          )}
+        <div className="flex flex-col min-w-0 flex-1 justify-center py-0.5">
+          {/* Always Line 1: Active Lyric */}
+          <span className="text-[14px] sm:text-[15px] font-bold text-white tracking-tight leading-snug truncate drop-shadow-sm transition-all duration-200">
+            {line1}
+          </span>
+          {/* Always Line 2: Upcoming Lyric */}
+          <span className="text-[12px] sm:text-[12.5px] font-medium text-white/50 leading-snug truncate mt-0.5 transition-all duration-200">
+            {line2}
+          </span>
         </div>
-        <ChevronRight size={16} className="text-white/30 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all shrink-0" />
+        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.04] border border-white/[0.06] group-hover:bg-white/[0.08] group-hover:border-white/10 transition-all shrink-0">
+          <ChevronRight size={15} className="text-white/40 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all" />
+        </div>
       </div>
     </div>
   );

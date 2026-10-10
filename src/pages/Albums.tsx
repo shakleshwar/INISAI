@@ -306,12 +306,12 @@ export function Albums() {
     const bioText = artistMeta?.strBiography || artistMeta?.strBiographyEN || '';
 
     return (
-      <div className="animate-fade-in relative pb-32">
+      <div className="animate-fade-in relative pb-2 md:pb-4">
         {/* Navigation Bar */}
         <div className="sticky top-0 z-40 bg-[var(--color-surface-0)]/90 backdrop-blur-xl border-b border-white/[0.04] px-4 md:px-10 py-3.5 flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors cursor-pointer py-1.5 px-3 rounded-full hover:bg-white/[0.06] active:scale-95 text-xs font-bold uppercase tracking-wider"
+            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-all duration-150 cursor-pointer py-1.5 px-3 rounded-full hover:bg-white/[0.06] active:scale-[0.96] text-xs font-bold uppercase tracking-wider"
           >
             <ArrowLeft size={16} />
             <span>Back to Artists</span>
@@ -324,7 +324,7 @@ export function Albums() {
                   setQueue(tracks);
                   playTrack(0);
                 }}
-                className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full text-xs font-black hover:scale-105 active:scale-95 transition-all shadow-md cursor-pointer"
+                className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full text-xs font-black hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-md cursor-pointer"
               >
                 <Play size={13} fill="currentColor" className="ml-0.5" />
                 <span>Play All</span>
@@ -438,7 +438,7 @@ export function Albums() {
                     setQueue(tracks);
                     playTrack(0);
                   }}
-                  className="w-14 h-14 bg-white rounded-full flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
+                  className="w-14 h-14 bg-white rounded-full flex items-center justify-center text-black hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-xl cursor-pointer"
                   title="Play"
                 >
                   <Play size={24} fill="black" className="ml-0.5" />
@@ -763,9 +763,9 @@ export function Albums() {
   const spotlightArtist = POPULAR_ARTISTS[0]; // The Weeknd
 
   return (
-    <div className="animate-fade-in pb-32">
+    <div className="animate-fade-in pb-2 md:pb-4">
       {/* Header & Search Area */}
-      <div className="px-4 sm:px-6 md:px-12 pt-10 sm:pt-14 pb-8 max-w-[1400px] mx-auto">
+      <div className="px-4 sm:px-6 md:px-12 pt-10 sm:pt-14 pb-2 sm:pb-4 max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -871,7 +871,7 @@ export function Albums() {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => handleItemClick(spotlightArtist.name, spotlightArtist.query, 'artist')}
-                className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-[13px] font-bold hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+                className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-[13px] font-bold hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-lg cursor-pointer"
               >
                 <Users size={15} />
                 <span>Explore Artist</span>
@@ -886,13 +886,13 @@ export function Albums() {
                   query: `${spotlightArtist.query} top hits`,
                   trackCount: '50+ Tracks'
                 })}
-                className="flex items-center gap-2 bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/10 px-4 py-2.5 rounded-full text-[13px] font-bold transition-all cursor-pointer active:scale-95"
+                className="flex items-center gap-2 bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/10 px-4 py-2.5 rounded-full text-[13px] font-bold transition-all duration-150 cursor-pointer active:scale-[0.96]"
               >
                 <Play size={14} fill="white" className="ml-0.5" />
                 <span>Play Hits</span>
               </button>
 
-              <span className="text-[11px] font-mono text-zinc-500 font-semibold ml-2 hidden sm:inline-block">
+              <span className="text-[11px] font-mono text-zinc-500 font-semibold ml-2 hidden sm:inline-block tabular-nums">
                 {spotlightArtist.listeners} Listeners
               </span>
             </div>
@@ -905,9 +905,9 @@ export function Albums() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-150 cursor-pointer active:scale-[0.96] ${
                 activeCategory === cat.id
-                  ? 'bg-white text-black shadow-md scale-105'
+                  ? 'bg-white text-black shadow-md'
                   : 'bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white border border-white/[0.04]'
               }`}
             >
@@ -928,14 +928,14 @@ export function Albums() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => scrollContainer(artistScrollRef, -320)}
-                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-[0.96]"
                 aria-label="Scroll left"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={() => scrollContainer(artistScrollRef, 320)}
-                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-[0.96]"
                 aria-label="Scroll right"
               >
                 <ChevronRight size={16} />
@@ -983,7 +983,7 @@ export function Albums() {
         </section>
 
         {/* ═══ Artist Radio & Curated Stations (NO FAKE LIVE PILLS) ═══ */}
-        <section className="mb-14">
+        <section className="mb-8 sm:mb-10">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
@@ -994,14 +994,14 @@ export function Albums() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => scrollContainer(radioScrollRef, -340)}
-                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-[0.96]"
                 aria-label="Scroll left"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={() => scrollContainer(radioScrollRef, 340)}
-                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-white/[0.04] hover:bg-white/10 text-white flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-[0.96]"
                 aria-label="Scroll right"
               >
                 <ChevronRight size={16} />

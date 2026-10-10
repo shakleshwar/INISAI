@@ -140,7 +140,7 @@ export function Home() {
   }
 
   return (
-    <div className="animate-fade-in pb-32 md:pb-24">
+    <div className="animate-fade-in pb-2 md:pb-4">
       {/* 3D Coverflow Hero */}
       <HeroSection 
         greeting={greeting}

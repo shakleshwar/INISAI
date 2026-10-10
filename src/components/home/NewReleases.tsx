@@ -48,7 +48,7 @@ export function NewReleases({ releases, isLoading = false }: NewReleasesProps) {
   const items = releases || [];
 
   return (
-    <section className="my-8 sm:my-12 relative group/releases">
+    <section className="relative group/releases">
       {/* Section Header */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div className="flex items-center gap-2.5">
@@ -81,7 +81,7 @@ export function NewReleases({ releases, isLoading = false }: NewReleasesProps) {
         >
           <button
             onClick={() => scrollByAmount(-420)}
-            className="w-9 h-9 bg-black/85 backdrop-blur-md border border-white/15 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
+            className="w-9 h-9 bg-black/85 backdrop-blur-md border border-white/15 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-[0.96] transition-all duration-150 shadow-xl cursor-pointer"
             aria-label="Scroll left"
           >
             <ChevronLeft size={20} />
@@ -96,7 +96,7 @@ export function NewReleases({ releases, isLoading = false }: NewReleasesProps) {
         >
           <button
             onClick={() => scrollByAmount(420)}
-            className="w-9 h-9 bg-black/85 backdrop-blur-md border border-white/15 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
+            className="w-9 h-9 bg-black/85 backdrop-blur-md border border-white/15 rounded-full flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 active:scale-[0.96] transition-all duration-150 shadow-xl cursor-pointer"
             aria-label="Scroll right"
           >
             <ChevronRight size={20} />

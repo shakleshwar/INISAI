@@ -88,7 +88,7 @@ export function TopTracksList({
                       ? 'text-white' 
                       : 'text-zinc-600 group-hover:text-zinc-400'
                   }`}>
-                    {index + 1}
+                    <span className="tabular-nums">{index + 1}</span>
                   </span>
                 )}
               </div>
@@ -106,7 +106,7 @@ export function TopTracksList({
                   {playing ? (
                     <Pause size={16} fill="white" className="drop-shadow-md text-white"/>
                   ) : (
-                    <Play size={16} fill="white" className="ml-0.5 drop-shadow-md text-white scale-90 group-hover:scale-100 transition-transform"/>
+                    <Play size={16} fill="white" className="ml-0.5 drop-shadow-md text-white scale-95 group-hover:scale-100 transition-transform"/>
                   )}
                 </div>
               </div>
@@ -130,7 +130,7 @@ export function TopTracksList({
               {/* Actions */}
               <div className="flex items-center gap-1 sm:gap-2">
                 <button 
-                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 cursor-pointer ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-[0.96] cursor-pointer ${
                     isLiked 
                       ? 'text-white opacity-100' 
                       : 'text-zinc-600 hover:text-white md:opacity-0 group-hover:opacity-100 hover:bg-white/[0.06]'

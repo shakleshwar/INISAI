@@ -1,16 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAudioStore } from '../store/useAudioStore';
-import { API_BASE } from '../services/api';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { API_BASE, api } from '../services/api';
 import YouTube from 'react-youtube';
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any | null>(null);
-  // Monotonically increasing ID to cancel stale async loads.
-  // When the user swipes to the next track, loadIdRef increments,
-  // causing any in-flight .play() or onReady from the OLD track to bail out.
+  const currentLoadedVideoIdRef = useRef<string | null>(null);
   const loadIdRef = useRef(0);
-  
+
   const queue = useAudioStore((state) => state.queue);
   const currentIndex = useAudioStore((state) => state.currentIndex);
   const isPlaying = useAudioStore((state) => state.isPlaying);
@@ -23,25 +22,59 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const prev = useAudioStore((state) => state.prev);
   const play = useAudioStore((state) => state.play);
   const pause = useAudioStore((state) => state.pause);
-  const togglePlay = useAudioStore((state) => state.togglePlay);
   const addRecentSong = useAudioStore((state) => state.addRecentSong);
 
+  // Settings subscriptions
+  const engine = useSettingsStore((state) => state.streamingService);
+  const autoplay = useSettingsStore((state) => state.autoplay);
+
   const currentTrack = queue[currentIndex];
-  const engine = localStorage.getItem('streamingService') || 'youtube';
   const isOnline = currentTrack?.source === 'online';
   const useYTPlayer = isOnline && engine === 'youtube';
 
-  // Sync state to players
+  // Handle Track Completion with Autoplay algorithm
+  const handleTrackEnd = useCallback(async () => {
+    const store = useAudioStore.getState();
+    if (store.loopMode === 'one') {
+      if (!useYTPlayer && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(e => console.error("Loop failed:", e));
+      } else if (useYTPlayer && ytPlayerRef.current) {
+        ytPlayerRef.current.seekTo(0, true);
+        ytPlayerRef.current.playVideo();
+      }
+      return;
+    }
+
+    const isLastTrack = store.currentIndex >= store.queue.length - 1;
+    if (isLastTrack && autoplay && currentTrack) {
+      try {
+        const query = currentTrack.artist || currentTrack.title;
+        const results = await api.searchOnlineTracks(query);
+        const existingIds = new Set(store.queue.map(t => t.id || t.videoId));
+        const newTracks = results.filter(t => !existingIds.has(t.id || t.videoId)).slice(0, 5);
+        if (newTracks.length > 0) {
+          store.addTracks(newTracks);
+          store.next();
+          return;
+        }
+      } catch (e) {
+        console.warn("Autoplay fetch notice:", e);
+      }
+    }
+
+    store.next();
+  }, [autoplay, currentTrack, useYTPlayer]);
+
+  // Fast Instant Track Playback Synchronization
   useEffect(() => {
     if (!currentTrack) return;
     
-    // Increment loadId so any in-flight async from the PREVIOUS track is invalidated
     const thisLoadId = ++loadIdRef.current;
-    
     addRecentSong(currentTrack);
     
     if (!useYTPlayer) {
-      // Pause YouTube
+      // Pause YouTube player if running
       try {
         if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
           ytPlayerRef.current.pauseVideo();
@@ -52,44 +85,68 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (audio) {
         let targetSrc = currentTrack.audioSrc || '';
         if (isOnline && engine !== 'youtube') {
-          targetSrc = `${API_BASE}/api/stream/` + currentTrack.videoId + '?engine=' + engine + '&title=' + encodeURIComponent(currentTrack.title) + '&artist=' + encodeURIComponent(currentTrack.artist);
+          targetSrc = `${API_BASE}/api/stream/${currentTrack.videoId}?engine=${engine}&title=${encodeURIComponent(currentTrack.title)}&artist=${encodeURIComponent(currentTrack.artist)}`;
         }
+        
+        // Only update src if changed, without calling audio.load() which causes reload lag
         if (audio.src !== targetSrc && !audio.src.endsWith(targetSrc)) {
           audio.src = targetSrc;
         }
         
         if (isPlaying) {
-          audio.play().then(() => {
-            // If the user already swiped away, stop this stale playback
-            if (loadIdRef.current !== thisLoadId) {
-              audio.pause();
-            }
-          }).catch(e => {
-            // Only log if this is still the current load
-            if (loadIdRef.current === thisLoadId) {
-              console.error("Local play failed:", e);
-            }
-          });
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              if (loadIdRef.current !== thisLoadId) {
+                audio.pause();
+              }
+            }).catch(e => {
+              if (loadIdRef.current === thisLoadId) {
+                console.warn("Audio element play error:", e);
+              }
+            });
+          }
         } else {
           audio.pause();
         }
       }
     } else {
-      // Pause Local
+      // Pause HTML5 audio
       if (audioRef.current) audioRef.current.pause();
       
-      try {
-        const yt = ytPlayerRef.current;
-        if (yt && typeof yt.playVideo === 'function') {
-          if (isPlaying) {
-            yt.playVideo();
-          } else {
-            yt.pauseVideo();
+      // Fast YouTube track switching using persistent player instance
+      const yt = ytPlayerRef.current;
+      const targetVideoId = currentTrack.videoId;
+
+      if (yt && targetVideoId) {
+        if (currentLoadedVideoIdRef.current !== targetVideoId) {
+          currentLoadedVideoIdRef.current = targetVideoId;
+          try {
+            if (isPlaying) {
+              if (typeof yt.loadVideoById === 'function') {
+                yt.loadVideoById(targetVideoId);
+              }
+            } else {
+              if (typeof yt.cueVideoById === 'function') {
+                yt.cueVideoById(targetVideoId);
+              }
+            }
+          } catch (e) {
+            console.warn("YouTube fast-switch notice:", e);
           }
+        } else {
+          // Same video ID: simply sync play/pause state
+          try {
+            if (isPlaying && typeof yt.playVideo === 'function') {
+              yt.playVideo();
+            } else if (!isPlaying && typeof yt.pauseVideo === 'function') {
+              yt.pauseVideo();
+            }
+          } catch {}
         }
-      } catch {}
+      }
     }
-  }, [currentIndex, queue, isPlaying, useYTPlayer, isOnline, engine, currentTrack, addRecentSong]);
+  }, [currentIndex, isPlaying, useYTPlayer, isOnline, engine, currentTrack?.id, currentTrack?.videoId]);
 
   // Sync volume
   useEffect(() => {
@@ -133,118 +190,67 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           navigator.mediaSession.setActionHandler('seekforward', (details) => {
             const state = useAudioStore.getState();
             const skipTime = details.seekOffset || 10;
-            state.seek(Math.min(state.duration || 100, state.progress + skipTime));
+            state.seek(Math.min(state.duration, state.progress + skipTime));
           });
-        } catch {
-          console.warn('Warning! The "seekto", "seekbackward", "seekforward" media session action is not supported.');
-        }
-      } catch (e) {
-        console.error("MediaSession error:", e);
-      }
+        } catch {}
+      } catch {}
     }
-  }, [currentIndex, queue, currentTrack, play, pause, prev, next]);
+  }, [currentTrack, play, pause, prev, next]);
 
-  // Sync MediaSession position
+  const lastSeekTimeRef = useRef(0);
+
+  // Handle external seeking from store (User scrubbing or tapping the audio progress bar)
   useEffect(() => {
     const unsub = useAudioStore.subscribe((state, prevState) => {
-      // Only update when isPlaying changes, duration changes, or a large seek happens
-      if (
-        state.isPlaying !== prevState.isPlaying ||
-        state.duration !== prevState.duration ||
-        Math.abs(state.progress - prevState.progress) > 1.5
-      ) {
-        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-          try {
-            navigator.mediaSession.setPositionState({
-              duration: state.duration || 100,
-              playbackRate: state.isPlaying ? 1 : 0,
-              position: state.progress || 0
-            });
-          } catch {}
-        }
-      }
-    });
-    return unsub;
-  }, []);
-
-  // Global Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input or textarea
-      if (
-        document.activeElement?.tagName === 'INPUT' ||
-        document.activeElement?.tagName === 'TEXTAREA' ||
-        (document.activeElement as HTMLElement)?.isContentEditable
-      ) {
-        return;
-      }
-
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          togglePlay();
-          break;
-        case 'ArrowRight':
-          if (e.ctrlKey) {
-            e.preventDefault();
-            useAudioStore.getState().next();
-          } else {
-            e.preventDefault();
-            const state = useAudioStore.getState();
-            state.seek(Math.min((state.duration || 100), state.progress + 10));
-          }
-          break;
-        case 'ArrowLeft':
-          if (e.ctrlKey) {
-            e.preventDefault();
-            useAudioStore.getState().prev();
-          } else {
-            e.preventDefault();
-            const state = useAudioStore.getState();
-            state.seek(Math.max(0, state.progress - 10));
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay]);
-
-  // Handle external seeking from store (User scrubbing the progress bar)
-  useEffect(() => {
-    const unsub = useAudioStore.subscribe((state, prevState) => {
-      // If seekRequest changed, it was a manual seek by the user
       if (state.seekRequest !== prevState.seekRequest) {
-        if (!isOnline && audioRef.current) {
-          audioRef.current.currentTime = state.progress;
-        } else if (isOnline && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
-          ytPlayerRef.current.seekTo(state.progress, true);
+        lastSeekTimeRef.current = Date.now();
+        const targetTime = state.progress;
+
+        if (useYTPlayer && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+          try {
+            ytPlayerRef.current.seekTo(targetTime, true);
+          } catch (e) {
+            console.warn("YouTube seek error:", e);
+          }
+        }
+
+        if (audioRef.current && (!useYTPlayer || audioRef.current.src)) {
+          try {
+            audioRef.current.currentTime = targetTime;
+          } catch (e) {
+            console.warn("HTML5 audio seek error:", e);
+          }
         }
       }
     });
     return unsub;
-  }, [isOnline]);
+  }, [useYTPlayer]);
 
-  // YT Progress Polling
+  // Poll progress for YouTube playback
   useEffect(() => {
     let interval: any;
-    if (isOnline && isPlaying) {
+    if (useYTPlayer && isPlaying) {
       interval = setInterval(async () => {
+        // Skip polling right after a seek to avoid buffer race conditions
+        if (Date.now() - lastSeekTimeRef.current < 450) return;
+
         if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
           const time = await ytPlayerRef.current.getCurrentTime();
           _setProgress(time);
         }
-      }, 500);
+      }, 400);
     }
     return () => clearInterval(interval);
-  }, [isOnline, isPlaying, _setProgress]);
+  }, [useYTPlayer, isPlaying, _setProgress]);
 
   return (
     <>
+      {/* HTML5 Audio Player with preloading enabled */}
       <audio
         ref={audioRef}
+        preload="auto"
         onTimeUpdate={() => {
+          if (Date.now() - lastSeekTimeRef.current < 350) return;
           if (audioRef.current && !useYTPlayer) {
             _setProgress(audioRef.current.currentTime);
           }
@@ -254,34 +260,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             _setDuration(audioRef.current.duration);
           }
         }}
-        onEnded={() => {
-          if (!useYTPlayer) {
-            if (useAudioStore.getState().loopMode === 'one') {
-              if (audioRef.current) {
-                audioRef.current.currentTime = 0;
-                audioRef.current.play().catch(e => console.error("Local loop play failed:", e));
-              }
-            } else {
-              next();
-            }
-          }
-        }}
+        onEnded={handleTrackEnd}
         onError={(e) => {
           console.error("Local Audio Player Error:", e);
           pause();
         }}
-        className="hidden"
       />
       
-      {/* Hidden YouTube Player */}
-      <div className="hidden pointer-events-none opacity-0 w-0 h-0 absolute overflow-hidden">
-        {useYTPlayer && currentTrack?.videoId && (
+      {/* Persistent Off-Screen YouTube Player (No unmounting between tracks for instant <300ms switching) */}
+      <div 
+        className="pointer-events-none opacity-0 fixed -top-[9999px] -left-[9999px] w-[200px] h-[200px] overflow-hidden"
+        style={{ zIndex: -100 }}
+      >
+        {useYTPlayer && (
           <YouTube
-            key={currentTrack.videoId}
-            videoId={currentTrack.videoId}
+            videoId={currentTrack?.videoId || ''}
             opts={{
-              height: '10',
-              width: '10',
+              height: '200',
+              width: '200',
               playerVars: {
                 autoplay: isPlaying ? 1 : 0,
                 controls: 0,
@@ -290,42 +286,47 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
                 iv_load_policy: 3,
                 rel: 0,
                 showinfo: 0,
+                playsinline: 1,
+                enablejsapi: 1,
               },
             }}
             onReady={(e) => {
-              // Capture the loadId at the moment this player was created
-              const readyLoadId = loadIdRef.current;
               ytPlayerRef.current = e.target;
               e.target.setVolume(volume * 100);
-              // Only auto-play if this is still the current track
-              if (isPlaying && loadIdRef.current === readyLoadId) {
-                e.target.playVideo();
-              }
-            }}
-            onPlay={async (e) => {
-              _setIsPlaying(true);
-              const duration = await e.target.getDuration();
-              _setDuration(duration);
-            }}
-            onPause={() => {
-              // Only update store state if the user didn't manually pause
-              if (useAudioStore.getState().isPlaying) {
-                _setIsPlaying(false);
-              }
-            }}
-            onEnd={() => {
-              if (useAudioStore.getState().loopMode === 'one') {
-                if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
-                  ytPlayerRef.current.seekTo(0, true);
-                  ytPlayerRef.current.playVideo();
+              
+              if (currentTrack?.videoId) {
+                currentLoadedVideoIdRef.current = currentTrack.videoId;
+                if (useAudioStore.getState().isPlaying) {
+                  e.target.playVideo();
                 }
-              } else {
-                next();
+              }
+            }}
+            onStateChange={async (e) => {
+              // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
+              if (e.data === 1) {
+                _setIsPlaying(true);
+                try {
+                  const duration = await e.target.getDuration();
+                  if (duration) _setDuration(duration);
+                } catch {}
+              } else if (e.data === 2) {
+                if (useAudioStore.getState().isPlaying) {
+                  _setIsPlaying(false);
+                }
+              } else if (e.data === 0) {
+                handleTrackEnd();
               }
             }}
             onError={(e) => {
-              console.error("YouTube Player Error:", e.data);
-              pause(); // Stop instead of skipping to prevent rapid failure loops
+              console.warn("YouTube Player playback code " + e.data + ", switching to stream fallback...");
+              // Automatic instant fallback if embed is restricted
+              if (currentTrack && audioRef.current) {
+                const fallbackSrc = `${API_BASE}/api/stream/${currentTrack.videoId}?engine=youtube&title=${encodeURIComponent(currentTrack.title)}&artist=${encodeURIComponent(currentTrack.artist)}`;
+                audioRef.current.src = fallbackSrc;
+                if (useAudioStore.getState().isPlaying) {
+                  audioRef.current.play().catch(err => console.error("Audio fallback play failed:", err));
+                }
+              }
             }}
           />
         )}
@@ -335,3 +336,5 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+
+export default AudioProvider;

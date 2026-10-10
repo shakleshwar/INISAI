@@ -123,7 +123,7 @@ function GravityMarqueeRow({
  <h3 className="text-[18px] md:text-[22px] font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] tracking-tight">{genre.name}</h3>
  <div className="flex items-center justify-between">
  <span className="text-[9px] md:text-[11px] text-zinc-300 font-bold uppercase tracking-widest truncate mr-2">{genre.artist}</span>
- <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300 shadow-[0_4px_16px_rgba(255,255,255,0.2)] hover:scale-110 shrink-0">
+ <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300 shadow-[0_4px_16px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-[0.96] shrink-0">
  <Play size={16} fill="currentColor"className="text-zinc-950 ml-0.5 w-3.5 h-3.5 md:w-4 md:h-4"/>
  </div>
  </div>
@@ -180,7 +180,7 @@ export function Genres() {
  if (selectedGenre) {
  const genre = ALL_GENRES.find(g => g.name === selectedGenre);
  return (
- <div className="animate-fade-in min-h-screen bg-[#030304]">
+ <div className="animate-fade-in min-h-full pb-2 md:pb-4 bg-[#030304]">
  <div className="relative overflow-hidden pt-16 pb-12">
  <div className={`absolute inset-0 bg-gradient-to-br ${genre?.gradient || 'from-white/[0.05] to-transparent'} opacity-10 pointer-events-none`} />
  
@@ -222,9 +222,10 @@ export function Genres() {
  <div className="py-6 flex items-center gap-6 relative z-10 border-b border-white/[0.04] mb-4">
  <button
  onClick={() => { setQueue(tracks); playTrack(0); }}
- className={`w-16 h-16 rounded-full bg-white flex items-center justify-center text-zinc-950 hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_8px_32px_rgba(255,255,255,0.2)]`}
+ aria-label="Play all genre tracks"
+ className={`w-16 h-16 rounded-full bg-white flex items-center justify-center text-zinc-950 hover:bg-zinc-200 active:scale-[0.96] transition-all duration-150 shadow-[0_8px_32px_rgba(255,255,255,0.25)]`}
  >
- <Play size={28} fill="currentColor"className="ml-1.5"/>
+ <Play size={26} fill="currentColor" className="ml-0.5"/>
  </button>
  </div>
  )}
@@ -283,7 +284,7 @@ export function Genres() {
  // GENRE MARQUEE with GRAVITY WELL EFFECT
  // ═══════════════════════════════════════════
  return (
- <div className="animate-fade-in relative overflow-hidden bg-[#030304]">
+ <div className="animate-fade-in relative overflow-hidden pb-2 md:pb-4 bg-[#030304]">
  {/* Ambient Background */}
 
 
@@ -307,9 +308,9 @@ export function Genres() {
 
  <button
  onClick={() => setIsPaused(!isPaused)}
- className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] hover:border-white/[0.1] active:scale-95 transition-all text-zinc-400 hover:text-white"
+ className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] hover:border-white/[0.1] active:scale-[0.96] transition-all duration-150 text-zinc-400 hover:text-white"
  >
- {isPaused ? <Play size={14} fill="currentColor"/> : <Pause size={14} fill="currentColor"/>}
+ {isPaused ? <Play size={14} fill="currentColor" className="ml-0.5"/> : <Pause size={14} fill="currentColor"/>}
  <span className="text-[11px] font-black uppercase tracking-widest hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
  </button>
  </div>

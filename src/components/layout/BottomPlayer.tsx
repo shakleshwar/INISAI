@@ -142,14 +142,15 @@ export function BottomPlayer() {
             </div>
             
             <button 
-              className={`p-2.5 rounded-full transition-all duration-300 shrink-0 ${
+              className={`p-2.5 rounded-full transition-all duration-150 active:scale-[0.96] shrink-0 ${
                 (likedSongs || []).some(t => t.id === currentTrack.id) 
-                  ? 'text-white bg-white/10' 
-                  : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04]'
+                  ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20 shadow-[0_0_12px_rgba(244,63,94,0.25)]' 
+                  : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06]'
               }`} 
+              aria-label={(likedSongs || []).some(t => t.id === currentTrack.id) ? "Unlike song" : "Like song"}
               onClick={(e) => { e.stopPropagation(); toggleLikedSong(currentTrack); }}
             >
-              <Heart size={18} className={(likedSongs || []).some(t => t.id === currentTrack.id) ? 'fill-white' : ''} />
+              <Heart size={18} className={(likedSongs || []).some(t => t.id === currentTrack.id) ? 'fill-rose-400 text-rose-400' : ''} />
             </button>
           </div>
         </div>
@@ -160,44 +161,49 @@ export function BottomPlayer() {
           <div className="flex items-center gap-6">
             <button 
               onClick={toggleShuffle} 
-              className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${isShuffled ? 'text-white relative after:content-[""] after:absolute after:-bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full after:shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
+              aria-label="Toggle shuffle"
+              className={`p-2.5 rounded-full transition-all duration-150 active:scale-[0.96] cursor-pointer ${isShuffled ? 'text-white bg-white/10 relative after:content-[""] after:absolute after:-bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full after:shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
               title="Shuffle"
             >
-              <Shuffle size={18} />
+              <Shuffle size={17} strokeWidth={2} />
             </button>
             
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleSmartPrev} 
-                className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all duration-200 active:scale-90 cursor-pointer"
+                aria-label="Previous track"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all duration-150 active:scale-[0.96] cursor-pointer"
                 title="Previous Track"
               >
-                <SkipBack size={20} fill="currentColor" />
+                <SkipBack size={19} fill="currentColor" />
               </button>
               
               <button 
                 onClick={togglePlay} 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-black bg-white hover:scale-105 active:scale-95 shadow-[0_4px_16px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.4)] transition-all duration-200 cursor-pointer shrink-0"
+                aria-label={isPlaying ? "Pause" : "Play"}
+                className="w-11 h-11 rounded-full flex items-center justify-center text-zinc-950 bg-white hover:bg-zinc-100 hover:scale-105 active:scale-[0.96] shadow-[0_4px_16px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.4)] transition-all duration-150 cursor-pointer shrink-0"
                 title={isPlaying ? "Pause" : "Play"}
               >
-                {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
+                {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" className="ml-0.5" />}
               </button>
               
               <button 
                 onClick={next} 
-                className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all duration-200 active:scale-90 cursor-pointer"
+                aria-label="Next track"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all duration-150 active:scale-[0.96] cursor-pointer"
                 title="Next Track"
               >
-                <SkipForward size={20} fill="currentColor" />
+                <SkipForward size={19} fill="currentColor" />
               </button>
             </div>
 
             <button 
               onClick={toggleLoop} 
-              className={`p-2 rounded-full transition-all duration-200 cursor-pointer ${loopMode !== 'off' ? 'text-white relative after:content-[""] after:absolute after:-bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full after:shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
+              aria-label={`Repeat mode: ${loopMode}`}
+              className={`p-2.5 rounded-full transition-all duration-150 active:scale-[0.96] cursor-pointer ${loopMode !== 'off' ? 'text-white bg-white/10 relative after:content-[""] after:absolute after:-bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:bg-white after:rounded-full after:shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
               title={`Repeat: ${loopMode}`}
             >
-              {loopMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+              {loopMode === 'one' ? <Repeat1 size={17} strokeWidth={2} /> : <Repeat size={17} strokeWidth={2} />}
             </button>
           </div>
           
@@ -266,43 +272,47 @@ export function BottomPlayer() {
         </div>
 
         {/* Right: Volume & Tools */}
-        <div className="flex items-center justify-end gap-3 w-[30%] min-w-[240px]">
+        <div className="flex items-center justify-end gap-2.5 w-[30%] min-w-[240px]">
           <button 
             onClick={() => {
               if (!currentTrack) return;
               const downloadUrl = `${API_BASE}/api/download/${currentTrack.id}?title=${encodeURIComponent(currentTrack.title)}`;
               window.open(downloadUrl, '_blank');
             }}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-white hover:bg-white/[0.04] transition-all duration-300 active:scale-95"
-            title="Download FLAC/MP3"
+            aria-label="Download track"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all duration-150 active:scale-[0.96]"
+            title="Download Audio"
           >
-            <Download size={16} />
+            <Download size={16} strokeWidth={2} />
           </button>
           
           <button 
             onClick={() => setShowLyrics(!showLyrics)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 active:scale-[0.97] border ${showLyrics ? 'bg-white/10 text-white border-white/20' : 'bg-white/[0.02] border-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.08]'}`}
+            aria-label="Toggle lyrics"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-150 active:scale-[0.96] border ${showLyrics ? 'bg-white/15 text-white border-white/20 shadow-sm' : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.08] hover:border-white/15'}`}
             title="Lyrics"
           >
-            <Mic2 size={14} />
+            <Mic2 size={14} strokeWidth={2} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Lyrics</span>
           </button>
           
           <button 
             onClick={() => { setShowQueue(!showQueue); setShowLyrics(false); }}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-95 border ${showQueue ? 'bg-white/10 text-white border-white/20' : 'bg-transparent border-transparent text-zinc-500 hover:text-white hover:bg-white/[0.04]'}`}
+            aria-label="Toggle playing queue"
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-150 active:scale-[0.96] border ${showQueue ? 'bg-white/15 text-white border-white/20 shadow-sm' : 'bg-transparent border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.08]'}`}
             title="Queue"
           >
-            <ListMusic size={16} />
+            <ListMusic size={16} strokeWidth={2} />
           </button>
           
           {/* Volume Control */}
-          <div className="flex items-center gap-2 w-28 group relative pl-2">
+          <div className="flex items-center gap-2 w-28 group relative pl-1">
             <button 
               onClick={() => setVolume(volume === 0 ? 1 : 0)} 
-              className="text-zinc-500 hover:text-white transition-colors p-1"
+              aria-label={volume === 0 ? "Unmute" : "Mute"}
+              className="w-7 h-7 flex items-center justify-center text-zinc-400 hover:text-white transition-colors p-1 rounded-full hover:bg-white/5 active:scale-[0.96]"
             >
-              <VolumeIcon size={16} />
+              <VolumeIcon size={16} strokeWidth={2} />
             </button>
             <div className="flex-1 relative h-6 cursor-pointer flex items-center">
               <input 

@@ -13,7 +13,7 @@ interface TrackContextMenuProps {
   buttonClassName?: string;
 }
 
-export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 text-zinc-500 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors md:opacity-0 group-hover:opacity-100 active:scale-90" }: TrackContextMenuProps) {
+export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 text-zinc-400 hover:text-white hover:bg-white/[0.08] rounded-full transition-all duration-150 md:opacity-0 group-hover:opacity-100 active:scale-[0.96]" }: TrackContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -83,12 +83,12 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
     <div 
       ref={menuRef}
       style={{ top: menuPos.top, left: menuPos.left }}
-      className="fixed z-[100] w-64 glass-surface-elevated rounded-xl p-1.5 text-[14px] font-medium text-zinc-300 animate-fade-in"
+      className="fixed z-[100] w-64 glass-surface-elevated rounded-xl p-1.5 text-[14px] font-medium text-zinc-300 animate-fade-in shadow-2xl border border-white/10"
     >
       {!showPlaylists ? (
         <div className="flex flex-col gap-0.5">
           <button 
-            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.06] rounded-md transition-colors group"
+            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.08] active:scale-[0.98] rounded-lg transition-all duration-150 group"
             onClick={(e) => {
               e.stopPropagation();
               setShowPlaylists(true);
@@ -102,7 +102,7 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
           </button>
 
           <button 
-            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.06] rounded-md transition-colors group"
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.08] active:scale-[0.98] rounded-lg transition-all duration-150 group"
             onClick={(e) => handleAction(e, () => playNext(track))}
           >
             <ListPlus size={16} className="text-zinc-400 group-hover:text-white transition-colors" />
@@ -110,7 +110,7 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
           </button>
 
           <button 
-            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.06] rounded-md transition-colors group"
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.08] active:scale-[0.98] rounded-lg transition-all duration-150 group"
             onClick={(e) => handleAction(e, () => addToQueue(track))}
           >
             <ListPlus size={16} className="text-zinc-400 group-hover:text-white transition-colors" />
@@ -118,7 +118,7 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
           </button>
 
           <button 
-            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.06] rounded-md transition-colors group"
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.08] active:scale-[0.98] rounded-lg transition-all duration-150 group"
             onClick={(e) => handleAction(e, () => toggleLikedSong(track))}
           >
             <Heart size={16} className={isLiked ? 'text-white fill-white' : 'text-zinc-400 group-hover:text-white transition-colors'} />
@@ -137,7 +137,7 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
                 window.open(downloadUrl, '_blank');
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2.5 flex items-center gap-3 text-zinc-300 hover:text-white hover:bg-white/[0.06] rounded-md transition-colors group"
+              className="w-full px-3 py-2.5 flex items-center gap-3 text-zinc-300 hover:text-white hover:bg-white/[0.08] active:scale-[0.98] rounded-lg transition-all duration-150 group"
             >
               <Download size={16} className="text-zinc-400 group-hover:text-white transition-colors" />
               Download
@@ -155,7 +155,7 @@ export function TrackContextMenu({ track, iconSize = 20, buttonClassName = "p-2 
                 }
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2.5 flex items-center gap-3 text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+              className="w-full px-3 py-2.5 flex items-center gap-3 text-red-400 hover:bg-red-400/10 active:scale-[0.98] rounded-lg transition-all duration-150"
             >
               <Trash2 size={16} />
               Remove from Device

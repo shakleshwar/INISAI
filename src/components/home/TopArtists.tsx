@@ -131,7 +131,7 @@ export function TopArtists({ trending }: TopArtistsProps) {
                 style={{ animationDelay: `${i * 50}ms` }}
               >
                 <div className="w-[72px] h-[72px] rounded-full overflow-hidden bg-zinc-900 mb-2.5 shadow-[0_6px_18px_rgba(0,0,0,0.5)] border-2 border-transparent group-active:border-white/30 transition-all duration-300 relative">
-                  <ArtImage artist={artistName as string} album={artistName as string} type="artist" className="w-full h-full object-cover group-active:scale-95 transition-transform duration-300"/>
+                  <ArtImage artist={artistName as string} album={artistName as string} type="artist" className="w-full h-full object-cover group-active:scale-[0.98] transition-transform duration-200"/>
                   {/* Subtle inner ring */}
                   <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/[0.08]" />
                 </div>

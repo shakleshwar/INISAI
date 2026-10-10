@@ -1,6 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Play, Pause, Loader2, Music, History, X, Heart, LayoutGrid, List, ArrowRight, Clock, CheckCircle, MapPin } from 'lucide-react';
+import { 
+  Search, Play, Pause, Loader2, Music, History, X, Heart, 
+  LayoutGrid, List, ArrowRight, Clock, CheckCircle, MapPin, 
+  Flame, Sparkles, TrendingUp, Compass, Headphones, Disc3, 
+  Trash2, ArrowUpRight, Radio
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import type { AudioDBArtist } from '../services/api';
@@ -10,31 +15,130 @@ import { ArtImage } from '../components/ui/ArtImage';
 import { TrackContextMenu } from '../components/ui/TrackContextMenu';
 
 /* ─────────────────────────────────────────────
-   DATA
+   CURATED DATA & CONSTANTS
    ───────────────────────────────────────────── */
 
 const QUICK_SEARCHES = [
- { label: 'Trending', query: 'trending hits 2024' },
- { label: 'Pop', query: 'top pop songs' },
- { label: 'Rock', query: 'best rock songs' },
- { label: 'R&B', query: 'r&b hits' },
- { label: 'Electronic', query: 'electronic dance music' },
- { label: 'Chill', query: 'chill lofi vibes' },
- { label: 'Classical', query: 'classical music' },
- { label: 'K-Pop', query: 'kpop hits' },
- { label: 'Hip-Hop', query: 'hip hop beats' },
- { label: 'Jazz', query: 'jazz classics' },
+  { label: 'Trending', query: 'trending hits 2024', icon: Flame },
+  { label: 'Pop Hits', query: 'top pop songs', icon: Sparkles },
+  { label: 'Rock Anthems', query: 'best rock songs', icon: Radio },
+  { label: 'Chill & Lo-Fi', query: 'chill lofi vibes', icon: Headphones },
+  { label: 'Electronic', query: 'electronic dance music', icon: Disc3 },
+  { label: 'Hip-Hop', query: 'hip hop beats', icon: Flame },
+  { label: 'R&B Soul', query: 'r&b soul hits', icon: Sparkles },
+  { label: 'Indie Vibes', query: 'indie alternative music', icon: Compass },
+  { label: 'K-Pop', query: 'kpop hits', icon: TrendingUp },
+  { label: 'Classical', query: 'classical music masterpieces', icon: Music },
+];
+
+const TRENDING_RECOMMENDATIONS = [
+  { term: 'Kendrick Lamar', category: 'Artist', query: 'Kendrick Lamar' },
+  { term: 'Dua Lipa', category: 'Artist', query: 'Dua Lipa' },
+  { term: 'Taylor Swift', category: 'Artist', query: 'Taylor Swift' },
+  { term: 'The Weeknd - Blinding Lights', category: 'Track', query: 'The Weeknd Blinding Lights' },
+  { term: 'Late Night Chill Lo-Fi', category: 'Playlist', query: 'chill lofi beats' },
+];
+
+const SONIC_MOODS = [
+  {
+    title: 'Night Drive',
+    subtitle: 'Synthwave & Midnight Cruising',
+    query: 'synthwave night drive playlist',
+    image: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800&auto=format&fit=crop',
+    accent: 'from-indigo-950/90 via-purple-950/60 to-zinc-950',
+    border: 'hover:border-indigo-400/40',
+  },
+  {
+    title: 'Deep Focus',
+    subtitle: 'Lo-Fi Instrumental & Flow State',
+    query: 'chill lofi study beats',
+    image: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?q=80&w=800&auto=format&fit=crop',
+    accent: 'from-emerald-950/90 via-teal-950/60 to-zinc-950',
+    border: 'hover:border-emerald-400/40',
+  },
+  {
+    title: 'Workout Fuel',
+    subtitle: 'High BPM Bass & Trap Energy',
+    query: 'gym workout hype music playlist',
+    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=800&auto=format&fit=crop',
+    accent: 'from-rose-950/90 via-red-950/60 to-zinc-950',
+    border: 'hover:border-rose-400/40',
+  },
+  {
+    title: 'Golden Hour',
+    subtitle: 'Warm Acoustic & Indie Serenity',
+    query: 'acoustic indie golden hour songs',
+    image: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?q=80&w=800&auto=format&fit=crop',
+    accent: 'from-amber-950/90 via-orange-950/60 to-zinc-950',
+    border: 'hover:border-amber-400/40',
+  }
 ];
 
 const BROWSE_GENRES = [
- { name: 'Pop Hits', accent: 'from-rose-950/40 to-zinc-950/20', accentBorder: 'hover:border-rose-400/30', artist: 'Dua Lipa', album: 'Future Nostalgia', description: 'Chart-topping bangers', size: 'tall' },
- { name: 'Chill Vibes', accent: 'from-slate-800/40 to-zinc-950/20', accentBorder: 'hover:border-slate-400/30', artist: 'The xx', album: 'I See You', description: 'Relax & unwind', size: 'short' },
- { name: 'Rock Classics', accent: 'from-amber-950/40 to-stone-950/20', accentBorder: 'hover:border-amber-400/30', artist: 'Nirvana', album: 'Nevermind', description: 'Timeless anthems', size: 'short' },
- { name: 'Hip-Hop', accent: 'from-stone-800/45 to-zinc-950/30', accentBorder: 'hover:border-stone-400/30', artist: 'Kanye West', album: 'Graduation', description: 'Beats & bars', size: 'tall' },
- { name: 'Electronic', accent: 'from-blue-950/45 to-zinc-950/20', accentBorder: 'hover:border-blue-400/30', artist: 'Disclosure', album: 'Settle', description: 'Club & synth waves', size: 'short' },
- { name: 'Indie', accent: 'from-emerald-950/40 to-zinc-950/20', accentBorder: 'hover:border-emerald-400/30', artist: 'Tame Impala', album: 'Currents', description: 'Alternative sounds', size: 'tall' },
- { name: 'K-Pop', accent: 'from-fuchsia-950/40 to-zinc-950/20', accentBorder: 'hover:border-fuchsia-400/30', artist: 'BLACKPINK', album: 'THE ALBUM', description: 'Global phenomenon', size: 'short' },
- { name: 'R&B Soul', accent: 'from-orange-950/40 to-zinc-950/20', accentBorder: 'hover:border-orange-400/30', artist: 'Frank Ocean', album: 'Blonde', description: 'Smooth & soulful', size: 'short' },
+  { 
+    name: 'Pop Hits', 
+    accent: 'from-rose-950/90 via-pink-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-rose-500/40', 
+    artist: 'Dua Lipa', 
+    album: 'Future Nostalgia', 
+    description: 'Chart-topping global bangers'
+  },
+  { 
+    name: 'Chill Vibes', 
+    accent: 'from-slate-900/90 via-zinc-900/50 to-zinc-950', 
+    accentBorder: 'hover:border-slate-500/40', 
+    artist: 'The xx', 
+    album: 'I See You', 
+    description: 'Downtempo & ambient serenity'
+  },
+  { 
+    name: 'Rock Classics', 
+    accent: 'from-amber-950/90 via-yellow-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-amber-500/40', 
+    artist: 'Nirvana', 
+    album: 'Nevermind', 
+    description: 'Timeless anthems & raw guitars'
+  },
+  { 
+    name: 'Hip-Hop', 
+    accent: 'from-stone-900/95 via-amber-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-amber-500/40', 
+    artist: 'Kanye West', 
+    album: 'Graduation', 
+    description: 'Beats, bars & heavy 808s'
+  },
+  { 
+    name: 'Electronic', 
+    accent: 'from-blue-950/90 via-cyan-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-blue-500/40', 
+    artist: 'Disclosure', 
+    album: 'Settle', 
+    description: 'Club rhythms & synth waves'
+  },
+  { 
+    name: 'Indie', 
+    accent: 'from-emerald-950/90 via-teal-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-emerald-500/40', 
+    artist: 'Tame Impala', 
+    album: 'Currents', 
+    description: 'Alternative & psychedelic dreams'
+  },
+  { 
+    name: 'K-Pop', 
+    accent: 'from-fuchsia-950/90 via-purple-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-fuchsia-500/40', 
+    artist: 'BLACKPINK', 
+    album: 'THE ALBUM', 
+    description: 'Global viral choreography'
+  },
+  { 
+    name: 'R&B Soul', 
+    accent: 'from-orange-950/90 via-red-950/50 to-zinc-950', 
+    accentBorder: 'hover:border-orange-500/40', 
+    artist: 'Frank Ocean', 
+    album: 'Blonde', 
+    description: 'Smooth vocals & introspective soul'
+  },
 ];
 
 /* ─────────────────────────────────────────────
@@ -42,707 +146,1222 @@ const BROWSE_GENRES = [
    ───────────────────────────────────────────── */
 
 export function Library() {
- const navigate = useNavigate();
- const [query, setQuery] = useState('');
- const [isSearching, setIsSearching] = useState(false);
- const [results, setResults] = useState<Track[]>([]);
- const [searchedArtist, setSearchedArtist] = useState<AudioDBArtist | null>(null);
- const [error, setError] = useState('');
- const [history, setHistory] = useState<string[]>([]);
- const [showHistory, setShowHistory] = useState(false);
- const [suggestions, setSuggestions] = useState<string[]>([]);
- const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
- const [searchFocused, setSearchFocused] = useState(false);
- const [isSearchSticky, setIsSearchSticky] = useState(false);
- const searchContainerRef = useRef<HTMLDivElement>(null);
- const searchSentinelRef = useRef<HTMLDivElement>(null);
- const inputRef = useRef<HTMLInputElement>(null);
- const stickyInputRef = useRef<HTMLInputElement>(null);
- 
- const { setQueue, playTrack, queue, isPlaying, currentIndex, play, pause, likedSongs, toggleLikedSong } = useAudioStore();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [results, setResults] = useState<Track[]>([]);
+  const [searchedArtist, setSearchedArtist] = useState<AudioDBArtist | null>(null);
+  const [error, setError] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeView, setActiveView] = useState<'grid' | 'list'>('grid');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'tracks'>('all');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [trendingTracks, setTrendingTracks] = useState<Track[]>([]);
+  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
 
- // ── Sticky search sentinel ──
- useEffect(() => {
-  const sentinel = searchSentinelRef.current;
-  if (!sentinel) return;
-  const observer = new IntersectionObserver(
-   ([entry]) => setIsSearchSticky(!entry.isIntersecting),
-   { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
-  );
-  observer.observe(sentinel);
-  return () => observer.disconnect();
- }, []);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const commandPaletteRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const trendingScrollRef = useRef<HTMLDivElement>(null);
 
- // ── Keyboard shortcut: Ctrl+K / Cmd+K ──
- useEffect(() => {
-  const handler = (e: KeyboardEvent) => {
-   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
-    inputRef.current?.focus();
-   }
-  };
-  document.addEventListener('keydown', handler);
-  return () => document.removeEventListener('keydown', handler);
- }, []);
+  const { 
+    setQueue, 
+    playTrack, 
+    queue, 
+    isPlaying, 
+    currentIndex, 
+    play, 
+    pause, 
+    likedSongs, 
+    toggleLikedSong 
+  } = useAudioStore();
 
- // ── Load search history ──
- useEffect(() => {
-  const saved = localStorage.getItem('searchHistory');
-  if (saved) {
-   try { setHistory(JSON.parse(saved)); } catch (e) { console.error("Failed to parse search history", e); }
-  }
+  // ── Track main container scroll position for subtle sticky header styling ──
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
 
-  const handleClickOutside = (event: MouseEvent) => {
-   if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-    setShowHistory(false);
-   }
-  };
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => document.removeEventListener('mousedown', handleClickOutside);
- }, []);
+    const handleScroll = () => {
+      setIsScrolled(mainEl.scrollTop > 24);
+    };
 
- // ── Autocomplete suggestions ──
- useEffect(() => {
-  const fetchSuggestions = async () => {
-   if (!query.trim()) { setSuggestions([]); return; }
-   try { const sugs = await api.getSuggestions(query); setSuggestions(sugs); } catch (e) { console.error('Failed to fetch suggestions', e); }
-  };
-  const timeout = setTimeout(fetchSuggestions, 300);
-  return () => clearTimeout(timeout);
- }, [query]);
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => mainEl.removeEventListener('scroll', handleScroll);
+  }, []);
 
- const saveToHistory = useCallback((term: string) => {
-  if (!term.trim()) return;
-  const newHistory = [term, ...history.filter(t => t !== term)].slice(0, 10);
-  setHistory(newHistory);
-  localStorage.setItem('searchHistory', JSON.stringify(newHistory));
- }, [history]);
+  // ── Smoothly close search dropdown on page scroll, preserving clicks/scroll inside dropdown ──
+  useEffect(() => {
+    if (!showHistory) return;
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
 
- const removeHistoryItem = (term: string, e: React.MouseEvent) => {
-  e.stopPropagation();
-  const newHistory = history.filter(t => t !== term);
-  setHistory(newHistory);
-  localStorage.setItem('searchHistory', JSON.stringify(newHistory));
- };
+    const initialScrollTop = mainEl.scrollTop;
 
- const executeSearch = useCallback(async (searchTerm: string) => {
-  if (!searchTerm.trim()) return;
-  setQuery(searchTerm);
-  setIsSearching(true);
-  setError('');
-  setShowHistory(false);
-  setSearchedArtist(null);
-  saveToHistory(searchTerm);
-  try {
-   const [data, initialArtist] = await Promise.all([
-    api.searchOnlineTracks(searchTerm),
-    api.getAudioDBArtist(searchTerm)
-   ]);
-   const found = data || [];
-   setResults(found);
-
-   let artistMatch = initialArtist;
-   if (!artistMatch && found.length > 0) {
-    const topArtist = found[0]?.artist;
-    if (topArtist && topArtist.toLowerCase() !== searchTerm.toLowerCase()) {
-      try {
-        artistMatch = await api.getAudioDBArtist(topArtist);
-      } catch {
-        // ignore
+    const handleScrollWhileOpen = () => {
+      // If user scrolls page content by > 20px, smoothly dismiss search history/dropdown
+      if (Math.abs(mainEl.scrollTop - initialScrollTop) > 20) {
+        setShowHistory(false);
+        setSearchFocused(false);
+        inputRef.current?.blur();
       }
+    };
+
+    mainEl.addEventListener('scroll', handleScrollWhileOpen, { passive: true });
+    return () => mainEl.removeEventListener('scroll', handleScrollWhileOpen);
+  }, [showHistory]);
+
+  // ── Keyboard shortcut: Ctrl+K / Cmd+K and Escape ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setShowHistory(true);
+      }
+      if (e.key === 'Escape') {
+        setShowHistory(false);
+        setSearchFocused(false);
+        inputRef.current?.blur();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  // ── Fetch Trending Tracks for Discovery Section ──
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTrending = async () => {
+      setIsTrendingLoading(true);
+      try {
+        const tracks = await api.getTrending();
+        if (isMounted && tracks && tracks.length > 0) {
+          setTrendingTracks(tracks);
+        }
+      } catch (err) {
+        console.warn('Trending tracks fetch notice:', err);
+      } finally {
+        if (isMounted) setIsTrendingLoading(false);
+      }
+    };
+    fetchTrending();
+    return () => { isMounted = false; };
+  }, []);
+
+  // ── Load Search History from LocalStorage ──
+  useEffect(() => {
+    const saved = localStorage.getItem('searchHistory');
+    if (saved) {
+      try { setHistory(JSON.parse(saved)); } catch (e) { console.error("Failed to parse search history", e); }
     }
-   }
-   setSearchedArtist(artistMatch);
-  } catch (err) {
-   console.error(err);
-   setError('Failed to fetch search results. Please try again.');
-  } finally {
-   setIsSearching(false);
-  }
- }, [saveToHistory]);
 
- const handleSearch = async (e: React.FormEvent) => {
-  e.preventDefault();
-  executeSearch(query);
- };
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
+        setShowHistory(false);
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
- const handlePlay = (index: number) => {
-  const isSameQueue = queue.length === results.length && queue[0]?.id === results[0]?.id;
-  if (!isSameQueue) setQueue(results);
-  if (currentIndex === index && isPlaying) pause();
-  else if (currentIndex === index && !isPlaying) play();
-  else playTrack(index);
- };
+  // ── Autocomplete suggestions fetch ──
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!query.trim()) { 
+        setSuggestions([]); 
+        return; 
+      }
+      try { 
+        const sugs = await api.getSuggestions(query); 
+        setSuggestions(sugs || []); 
+      } catch (e) { 
+        console.error('Failed to fetch suggestions', e); 
+      }
+    };
+    const timeout = setTimeout(fetchSuggestions, 200);
+    return () => clearTimeout(timeout);
+  }, [query]);
 
- const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
- };
+  // Reset selected index when query changes
+  useEffect(() => {
+    setSelectedSuggestionIndex(-1);
+  }, [query, suggestions]);
 
- const formatDuration = (seconds: number): string => {
-  if (!seconds || isNaN(seconds)) return '';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
- };
+  const saveToHistory = useCallback((term: string) => {
+    if (!term.trim()) return;
+    const trimmed = term.trim();
+    const newHistory = [trimmed, ...history.filter(t => t.toLowerCase() !== trimmed.toLowerCase())].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+  }, [history]);
 
- const hasResults = results.length > 0 && !isSearching;
- const showDiscovery = results.length === 0 && !isSearching;
+  const removeHistoryItem = (term: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newHistory = history.filter(t => t !== term);
+    setHistory(newHistory);
+    localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+  };
 
- /* ─────────────────────────────────────────────
-    SEARCH INPUT (shared between hero & sticky)
-    ───────────────────────────────────────────── */
- const renderSearchInput = (isSticky: boolean) => (
-  <form onSubmit={handleSearch} className="w-full">
-   <div className={`relative w-full flex items-center rounded-2xl border transition-all duration-200 ${
-    searchFocused && !isSticky ? 'bg-zinc-800/80 border-zinc-600 shadow-lg shadow-white/5' 
-    : isSticky ? 'bg-zinc-900/95 border-white/10' 
-    : 'bg-zinc-900/60 border-white/10 hover:border-white/20'
-   }`}>
-    <div className={`absolute left-4 transition-colors ${searchFocused ? 'text-white' : 'text-zinc-500'}`}>
-     <Search size={18} />
-    </div>
-    <input 
-     ref={isSticky ? stickyInputRef : inputRef}
-     type="text"
-     value={query}
-     onChange={(e) => setQuery(e.target.value)}
-     onFocus={() => { if (!isSticky) { setShowHistory(true); setSearchFocused(true); } }}
-     onBlur={() => setSearchFocused(false)}
-     placeholder="Search songs, artists, albums..."
-     className={`w-full bg-transparent font-medium text-zinc-100 placeholder:text-zinc-600 focus:outline-none ${
-      isSticky ? 'py-2.5 pl-11 pr-12 text-sm' : 'py-3.5 md:py-4 pl-12 pr-28 text-base'
-     }`}
-    />
-    {/* Clear button */}
-    {query && !isSticky && (
-     <button type="button" onClick={() => { setQuery(''); inputRef.current?.focus(); }}
-      className="absolute right-20 w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-white transition-colors rounded-full hover:bg-white/10">
-      <X size={14} />
-     </button>
-    )}
-    {/* Submit */}
-    {!isSticky ? (
-     <button type="submit" disabled={isSearching || !query.trim()}
-      className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-90">
-      {isSearching ? <Loader2 size={16} className="animate-spin"/> : <ArrowRight size={16} />}
-     </button>
-    ) : (
-     <button type="submit" disabled={isSearching || !query.trim()}
-      className="absolute right-2 w-8 h-8 flex items-center justify-center rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-90">
-      {isSearching ? <Loader2 size={14} className="animate-spin"/> : <ArrowRight size={14} />}
-     </button>
-    )}
-    {/* Keyboard shortcut hint */}
-    {!query && !isSticky && (
-     <div className="absolute right-14 hidden md:flex items-center gap-0.5 pointer-events-none">
-      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-600">⌘</kbd>
-      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-600">K</kbd>
-     </div>
-    )}
-   </div>
-  </form>
- );
+  const clearAllHistory = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHistory([]);
+    localStorage.removeItem('searchHistory');
+  };
 
- return (
-  <div className="animate-fade-in relative">
+  const executeSearch = useCallback(async (searchTerm: string) => {
+    if (!searchTerm.trim()) return;
+    setQuery(searchTerm);
+    setIsSearching(true);
+    setError('');
+    setShowHistory(false);
+    setSearchedArtist(null);
+    saveToHistory(searchTerm);
 
-   {/* ═══════════════════════════════════════════
-       STICKY SEARCH BAR (appears on scroll)
-       ═══════════════════════════════════════════ */}
-   <AnimatePresence>
-    {isSearchSticky && (
-     <motion.div 
-      initial={{ y: -48, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: -48, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-      className="sticky top-0 z-40 -mt-8"
-     >
-      <div className="bg-zinc-950/90 backdrop-blur-2xl border-b border-white/5 px-4 md:px-8 py-2.5">
-       <div className="max-w-2xl">
-        {renderSearchInput(true)}
-       </div>
-      </div>
-     </motion.div>
-    )}
-   </AnimatePresence>
+    try {
+      const [data, initialArtist] = await Promise.all([
+        api.searchOnlineTracks(searchTerm),
+        api.getAudioDBArtist(searchTerm)
+      ]);
+      const found = data || [];
+      setResults(found);
 
-   {/* ═══════════════════════════════════════════
-       HERO — Compressed, functional
-       ═══════════════════════════════════════════ */}
-   <div className="px-4 md:px-8 lg:px-10 pt-6 md:pt-8 pb-2">
-    <div className="flex items-baseline gap-3 mb-1">
-     <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-      Search
-     </h1>
-     <span className="text-sm text-zinc-600 font-medium hidden md:inline">{getGreeting()}</span>
-    </div>
-    <p className="text-sm text-zinc-500 mb-5">Find songs, artists, and albums</p>
-   </div>
+      let artistMatch = initialArtist;
+      if (!artistMatch && found.length > 0) {
+        const topArtist = found[0]?.artist;
+        if (topArtist && topArtist.toLowerCase() !== searchTerm.toLowerCase()) {
+          try {
+            artistMatch = await api.getAudioDBArtist(topArtist);
+          } catch {
+            // ignore
+          }
+        }
+      }
+      setSearchedArtist(artistMatch);
+    } catch (err) {
+      console.error(err);
+      setError('Unable to fetch tracks right now. Please check your connection and try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [saveToHistory]);
 
-   {/* ═══════════════════════════════════════════
-       SEARCH BAR — Full width command palette
-       ═══════════════════════════════════════════ */}
-   <div ref={searchSentinelRef} className="px-4 md:px-8 lg:px-10 mb-6">
-    <div ref={searchContainerRef} className="relative w-full max-w-3xl">
-     {renderSearchInput(false)}
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+      executeSearch(suggestions[selectedSuggestionIndex]);
+    } else {
+      executeSearch(query);
+    }
+  };
 
-     {/* ── Dropdown: Suggestions / History ── */}
-     {showHistory && (query.trim() ? suggestions.length > 0 : history.length > 0) && (
-      <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
-       <div className="px-2 py-2">
-        <div className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-3 py-2">
-         {query.trim() ? 'Suggestions' : 'Recent'}
+  // Keyboard navigation inside dropdown
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const listLength = query.trim() ? suggestions.length : history.length;
+    if (!showHistory || listLength === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => (prev + 1 < listLength ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => (prev - 1 >= 0 ? prev - 1 : listLength - 1));
+    }
+  };
+
+  const handlePlay = (index: number) => {
+    const isSameQueue = queue.length === results.length && queue[0]?.id === results[0]?.id;
+    if (!isSameQueue) setQueue(results);
+    if (currentIndex === index && isPlaying) pause();
+    else if (currentIndex === index && !isPlaying) play();
+    else playTrack(index);
+  };
+
+  const handlePlayTrending = (index: number) => {
+    const isSameQueue = queue.length === trendingTracks.length && queue[0]?.id === trendingTracks[0]?.id;
+    if (!isSameQueue) setQueue(trendingTracks);
+    if (currentIndex === index && isPlaying) pause();
+    else if (currentIndex === index && !isPlaying) play();
+    else playTrack(index);
+  };
+
+  const formatDuration = (seconds: number): string => {
+    if (!seconds || isNaN(seconds)) return '';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const hasResults = results.length > 0 && !isSearching;
+  const showDiscovery = results.length === 0 && !isSearching;
+
+  const filteredResults = useMemo(() => {
+    return results;
+  }, [results]);
+
+  /* ─────────────────────────────────────────────
+     RENDER SEARCH INPUT
+     ───────────────────────────────────────────── */
+  const renderSearchInput = () => (
+    <form onSubmit={handleSearchSubmit} className="w-full">
+      <div 
+        className={`relative w-full flex items-center transition-all duration-200 h-12 md:h-14 rounded-2xl ${
+          searchFocused
+            ? 'bg-zinc-900/95 border border-white/30 shadow-[0_8px_30px_rgba(0,0,0,0.5)] ring-2 ring-white/15'
+            : isScrolled
+              ? 'bg-zinc-900/90 hover:bg-zinc-900 border border-white/15 hover:border-white/25 shadow-lg'
+              : 'bg-zinc-900/70 hover:bg-zinc-900/90 border border-white/10 hover:border-white/20 shadow-md'
+        }`}
+      >
+        {/* Search Icon */}
+        <div className={`absolute left-4 md:left-5 flex items-center justify-center transition-colors pointer-events-none ${
+          searchFocused ? 'text-white' : 'text-zinc-400'
+        }`}>
+          <Search size={18} strokeWidth={2} />
         </div>
-        <ul className="max-h-64 overflow-y-auto">
-         {query.trim() ? (
-          suggestions.map((sug, idx) => (
-           <li key={idx}
-            className="flex items-center justify-between px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-colors"
-            onClick={() => executeSearch(sug)}>
-            <div className="flex items-center gap-3">
-             <Search size={14} className="text-zinc-500 group-hover:text-white shrink-0"/>
-             <span className="text-sm text-zinc-300 group-hover:text-white transition-colors truncate">{sug}</span>
-            </div>
-            <ArrowRight size={12} className="text-zinc-700 group-hover:text-zinc-400 shrink-0"/>
-           </li>
-          ))
-         ) : (
-          history.map((term, idx) => (
-           <li key={idx}
-            className="flex items-center justify-between px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-colors"
-            onClick={() => executeSearch(term)}>
-            <div className="flex items-center gap-3 min-w-0">
-             <History size={14} className="text-zinc-600 group-hover:text-zinc-400 shrink-0"/>
-             <span className="text-sm text-zinc-400 group-hover:text-white transition-colors truncate">{term}</span>
-            </div>
-            <button type="button" onClick={(e) => removeHistoryItem(term, e)}
-             className="text-zinc-700 hover:text-white w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-             <X size={12} />
+
+        {/* Text Input */}
+        <input 
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => { 
+            setShowHistory(true); 
+            setSearchFocused(true); 
+          }}
+          onBlur={() => setSearchFocused(false)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search songs, artists, albums, or moods..."
+          className="w-full bg-transparent font-medium text-white placeholder:text-zinc-500 focus:outline-none pl-11 md:pl-13 pr-24 md:pr-28 text-sm md:text-base"
+        />
+
+        {/* Right Action Cluster */}
+        <div className="absolute right-2 md:right-3 flex items-center gap-2">
+          {/* Clear Button */}
+          {query && (
+            <button 
+              type="button" 
+              onClick={() => { 
+                setQuery(''); 
+                inputRef.current?.focus(); 
+              }}
+              aria-label="Clear search input"
+              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-zinc-400 hover:text-white transition-all duration-150 rounded-full hover:bg-white/10 active:scale-[0.96]"
+            >
+              <X size={14} />
             </button>
-           </li>
-          ))
-         )}
-        </ul>
-       </div>
-      </div>
-     )}
-    </div>
-   </div>
+          )}
 
-   {/* ═══════════════════════════════════════════
-       QUICK SEARCH — Horizontal scrollable pills (always visible)
-       ═══════════════════════════════════════════ */}
-   {showDiscovery && (
-    <div className="px-4 md:px-8 lg:px-10 mb-8">
-     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-      {QUICK_SEARCHES.map((item) => (
-       <button key={item.label} onClick={() => executeSearch(item.query)}
-        className="shrink-0 px-4 py-2 rounded-full text-sm font-medium text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 hover:bg-zinc-800 hover:border-white/20 transition-all active:scale-95 whitespace-nowrap">
-        {item.label}
-       </button>
-      ))}
-     </div>
-    </div>
-   )}
+          {/* Keyboard shortcut indicator on Desktop */}
+          {!query && (
+            <div className="hidden md:flex items-center pointer-events-none opacity-50">
+              <kbd className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-300">⌘K</kbd>
+            </div>
+          )}
 
-   {/* ═══════════════════════════════════════════
-       ERROR STATE
-       ═══════════════════════════════════════════ */}
-   {error && (
-    <div className="mx-4 md:mx-8 lg:mx-10 mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-medium flex items-center gap-3">
-     <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
-      <X size={16} className="text-red-400"/>
-     </div>
-     {error}
-    </div>
-   )}
-
-   {/* ═══════════════════════════════════════════
-       LOADING STATE
-       ═══════════════════════════════════════════ */}
-   <AnimatePresence mode="wait">
-    {isSearching && (
-     <motion.div key="loading"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.2 }}
-      className="px-4 md:px-8 lg:px-10">
-      <div className="flex flex-col items-center justify-center py-16">
-       <div className="relative mb-5">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-end justify-center gap-[3px] p-4">
-         {[0, 1, 2, 3, 4].map(i => (
-          <div key={i} className="w-[3px] rounded-full bg-white eq-bar" style={{ height: '100%' }} />
-         ))}
-        </div>
-       </div>
-       <p className="text-base font-semibold text-white tracking-tight">Searching…</p>
-       <p className="text-sm text-zinc-600 mt-1">Finding the best matches</p>
-      </div>
-      {/* Skeleton grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mt-2">
-       {Array.from({ length: 12 }).map((_, i) => (
-        <div key={i} className="animate-pulse" style={{ animationDelay: `${i * 80}ms` }}>
-         <div className="aspect-square rounded-xl bg-zinc-900 mb-3"/>
-         <div className="h-3 w-3/4 rounded bg-zinc-900 mb-2"/>
-         <div className="h-2.5 w-1/2 rounded bg-zinc-900/60"/>
-        </div>
-       ))}
-      </div>
-     </motion.div>
-    )}
-
-    {/* ═══════════════════════════════════════════
-        SEARCH RESULTS
-        ═══════════════════════════════════════════ */}
-    {hasResults && (
-     <motion.div key="results"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.25 }}
-      className="px-4 md:px-8 lg:px-10 pb-8">
-      
-      {/* ── ARTIST SPOTLIGHT BANNER (When search matches an artist) ── */}
-      {searchedArtist && (
-        <div className="relative rounded-3xl overflow-hidden mb-8 border border-white/10 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950">
-          {/* Panoramic background image */}
-          <div className="absolute inset-0 z-0">
-            {searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb ? (
-              <img
-                src={searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb}
-                alt={searchedArtist.strArtist}
-                className="w-full h-full object-cover brightness-[0.4] filter contrast-110"
-              />
+          {/* Submit Action Button */}
+          <button 
+            type="submit" 
+            disabled={isSearching || !query.trim()}
+            aria-label="Execute search"
+            className="flex items-center justify-center rounded-full bg-white text-black hover:bg-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150 active:scale-[0.96] shadow-md w-8 h-8 md:w-9 md:h-9"
+          >
+            {isSearching ? (
+              <Loader2 size={14} className="animate-spin text-black" />
             ) : (
-              <ArtImage
-                artist={searchedArtist.strArtist}
-                type="artist"
-                className="w-full h-full object-cover brightness-[0.35]"
-              />
+              <ArrowRight size={15} strokeWidth={2.5} />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-0)] via-[var(--color-surface-0)]/60 to-black/30" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-surface-0)] via-transparent to-[var(--color-surface-0)]/70" />
-          </div>
+          </button>
+        </div>
+      </div>
+    </form>
+  );
 
-          <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5 min-w-0">
-              {/* Artist Avatar */}
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-zinc-900 shrink-0 border-2 border-white/20 shadow-2xl relative">
-                {searchedArtist.strArtistThumb ? (
-                  <img src={searchedArtist.strArtistThumb} alt={searchedArtist.strArtist} className="w-full h-full object-cover" />
+  /* ─────────────────────────────────────────────
+     RENDER INTELLIGENT COMMAND PALETTE DROPDOWN
+     ───────────────────────────────────────────── */
+  const renderCommandPalette = () => (
+    <AnimatePresence>
+      {showHistory && (
+        <motion.div 
+          ref={commandPaletteRef}
+          initial={{ opacity: 0, y: 6, scale: 0.99 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.99 }}
+          transition={{ duration: 0.15 }}
+          className="absolute top-[calc(100%+8px)] left-0 right-0 bg-zinc-950/95 backdrop-blur-3xl border border-white/10 rounded-2xl md:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] z-50 overflow-hidden"
+        >
+          <div className="p-3 md:p-5 max-h-[70vh] overflow-y-auto scrollbar-hide">
+            {/* CASE 1: Query has characters -> Live Autocomplete */}
+            {query.trim() ? (
+              <div>
+                <div className="flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  <span>Suggestions</span>
+                  <span className="font-mono text-zinc-600">Press Enter</span>
+                </div>
+                {suggestions.length > 0 ? (
+                  <ul className="space-y-1 mt-1">
+                    {suggestions.map((sug, idx) => {
+                      const isSelected = selectedSuggestionIndex === idx;
+                      return (
+                        <li 
+                          key={idx}
+                          onClick={() => executeSearch(sug)}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer group transition-all ${
+                            isSelected ? 'bg-white/15 text-white' : 'hover:bg-white/5 text-zinc-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Search size={14} className={`${isSelected ? 'text-white' : 'text-zinc-500 group-hover:text-white'} shrink-0`} />
+                            <span className="text-sm font-medium truncate group-hover:text-white transition-colors">
+                              {sug}
+                            </span>
+                          </div>
+                          <ArrowUpRight size={14} className="text-zinc-600 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all shrink-0" />
+                        </li>
+                      );
+                    })}
+                  </ul>
                 ) : (
-                  <ArtImage artist={searchedArtist.strArtist} type="artist" className="w-full h-full object-cover" />
+                  <div className="px-4 py-6 text-center text-zinc-500 text-sm">
+                    Press <span className="text-white font-medium">Enter</span> to search "{query}"
+                  </div>
                 )}
               </div>
+            ) : (
+              /* CASE 2: Query is empty -> Balanced 2-Column Command Palette (No Void) */
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  {/* Left Column: Recent Searches */}
+                  <div>
+                    <div className="flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <span className="flex items-center gap-1.5">
+                        <History size={12} />
+                        Recent Searches
+                      </span>
+                      {history.length > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={clearAllHistory}
+                          className="text-zinc-500 hover:text-rose-400 transition-colors lowercase tracking-normal text-xs flex items-center gap-1"
+                        >
+                          <Trash2 size={11} />
+                          clear all
+                        </button>
+                      )}
+                    </div>
 
-              {/* Artist Info */}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30 backdrop-blur-md">
-                    <CheckCircle size={10} className="text-blue-400" />
-                    Verified Artist
-                  </span>
-                  {searchedArtist.strGenre && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-zinc-300 border border-white/10">
-                      {searchedArtist.strGenre}
-                    </span>
-                  )}
-                  {searchedArtist.strCountry && (
-                    <span className="text-[11px] font-medium text-zinc-400 hidden sm:inline-flex items-center gap-1">
-                      <MapPin size={11} className="text-zinc-500" />
-                      {searchedArtist.strCountry}
-                    </span>
-                  )}
+                    {history.length > 0 ? (
+                      <ul className="space-y-1 mt-1">
+                        {history.slice(0, 5).map((term, idx) => (
+                          <li 
+                            key={idx}
+                            onClick={() => executeSearch(term)}
+                            className="flex items-center justify-between px-3.5 py-2 hover:bg-white/5 rounded-xl cursor-pointer group transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Clock size={13} className="text-zinc-600 group-hover:text-zinc-400 shrink-0" />
+                              <span className="text-sm text-zinc-300 group-hover:text-white transition-colors truncate">
+                                {term}
+                              </span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={(e) => removeHistoryItem(term, e)}
+                              className="w-6 h-6 flex items-center justify-center text-zinc-600 hover:text-white rounded-md hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                            >
+                              <X size={12} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="px-3.5 py-6 text-xs text-zinc-600">
+                        No recent searches
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Trending Searches */}
+                  <div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <Flame size={12} className="text-amber-400" />
+                      <span>Trending Searches</span>
+                    </div>
+
+                    <div className="space-y-1 mt-1">
+                      {TRENDING_RECOMMENDATIONS.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => executeSearch(item.query)}
+                          className="w-full flex items-center justify-between p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 text-left group transition-all"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-5 h-5 rounded-md bg-white/5 font-mono text-[10px] font-bold flex items-center justify-center text-zinc-400 group-hover:text-white group-hover:bg-white/10">
+                              {idx + 1}
+                            </span>
+                            <p className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate">
+                              {item.term}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-zinc-500 shrink-0 ml-2">
+                            {item.category}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight drop-shadow-md truncate">
-                  {searchedArtist.strArtist}
-                </h2>
-
-                {(searchedArtist.strBiography || searchedArtist.strBiographyEN) && (
-                  <p className="text-xs md:text-sm text-zinc-300 line-clamp-2 max-w-2xl mt-1.5 leading-relaxed font-normal">
-                    {searchedArtist.strBiography || searchedArtist.strBiographyEN}
-                  </p>
-                )}
+                {/* Bottom Quick Explore Chips */}
+                <div className="pt-3.5 mt-3.5 border-t border-white/5 flex flex-wrap gap-1.5 px-2">
+                  {['Top 50', 'Lo-Fi Chill', 'Gym Workout', 'Acoustic Morning', 'Synthwave'].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => executeSearch(tag)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
-              <button
-                onClick={() => {
-                  setQueue(results);
-                  playTrack(0);
-                }}
-                className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-white text-black px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-xl cursor-pointer"
-              >
-                <Play size={14} fill="currentColor" />
-                <span>Play Top Songs</span>
-              </button>
+  return (
+    <div className="relative min-h-full pb-2 md:pb-4">
+      {/* ── Soft Ambient Glow ── */}
+      <div 
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-64 pointer-events-none opacity-20 blur-3xl z-0"
+        style={{
+          background: 'radial-gradient(circle at 50% 15%, rgba(255, 255, 255, 0.12), transparent 70%)'
+        }}
+      />
 
-              <button
-                onClick={() => navigate('/albums', { state: { artist: searchedArtist.strArtist } })}
-                className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/15 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md cursor-pointer"
-              >
-                <span>Full Profile</span>
-                <ArrowRight size={13} />
-              </button>
-            </div>
+      {/* ── Subtle Backdrop Dimmer for Focused Search ── */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-20 pointer-events-none hidden md:block"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════
+          HEADER — Clean, Confident & Professional
+          ═══════════════════════════════════════════ */}
+      <div className="relative z-10 px-4 md:px-8 lg:px-10 pt-6 md:pt-10 pb-3 max-w-7xl mx-auto">
+        <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+          Search
+        </h1>
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          SEARCH BAR — Unified Sticky Container
+          (Glides to top-0 when scrolled, zero layout shift)
+          ═══════════════════════════════════════════ */}
+      <div 
+        className={`sticky top-0 z-40 transition-colors duration-200 px-4 md:px-8 lg:px-10 ${
+          isScrolled 
+            ? 'py-3 bg-zinc-950/90 backdrop-blur-2xl border-b border-white/10 shadow-xl' 
+            : 'py-2 bg-transparent mb-5'
+        }`}
+      >
+        <div ref={searchContainerRef} className="relative w-full max-w-7xl mx-auto">
+          {renderSearchInput()}
+          {renderCommandPalette()}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          QUICK SEARCH PILLS
+          ═══════════════════════════════════════════ */}
+      {showDiscovery && (
+        <div className="relative z-10 px-4 md:px-8 lg:px-10 mb-8 max-w-7xl mx-auto">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            {QUICK_SEARCHES.map((item) => {
+              const Icon = item.icon;
+              return (
+                <motion.button 
+                  key={item.label} 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => executeSearch(item.query)}
+                  className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full text-xs md:text-sm font-medium text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-850 border border-white/10 hover:border-white/20 transition-all shadow-sm whitespace-nowrap group"
+                >
+                  <Icon size={13} className="text-zinc-500 group-hover:text-white transition-colors" />
+                  <span>{item.label}</span>
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Results header */}
-      <div className="flex items-center justify-between mb-6">
-       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-         Results for "<span className="text-zinc-400">{query}</span>"
-         <span className="text-xs font-mono text-zinc-600 bg-zinc-900 px-2 py-0.5 rounded-md border border-white/5">{results.length}</span>
-        </h2>
-       </div>
-       <div className="flex items-center gap-1 p-0.5 bg-zinc-900 border border-white/10 rounded-lg">
-        <button onClick={() => setActiveView('grid')}
-         className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${activeView === 'grid' ? 'bg-white/10 text-white' : 'text-zinc-600 hover:text-zinc-300'}`}>
-         <LayoutGrid size={14} />
-        </button>
-        <button onClick={() => setActiveView('list')}
-         className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${activeView === 'list' ? 'bg-white/10 text-white' : 'text-zinc-600 hover:text-zinc-300'}`}>
-         <List size={14} />
-        </button>
-       </div>
-      </div>
+      {/* ═══════════════════════════════════════════
+          ERROR NOTICE
+          ═══════════════════════════════════════════ */}
+      {error && (
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10 mb-6">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-sm font-medium flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+              <X size={16} className="text-red-400" />
+            </div>
+            <p className="flex-1">{error}</p>
+          </div>
+        </div>
+      )}
 
-      {/* ── GRID VIEW ── */}
-      {activeView === 'grid' && (
-       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-        {results.map((track, idx) => {
-         const isCurrentlyPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
-         const isLiked = (likedSongs || []).some(t => t.id === track.id);
-         // First result gets featured styling on md+
-         const isFeatured = idx === 0;
-
-         return (
+      {/* ═══════════════════════════════════════════
+          LOADING STATE
+          ═══════════════════════════════════════════ */}
+      <AnimatePresence mode="wait">
+        {isSearching && (
           <motion.div 
-           key={track.id + idx}
-           initial={{ opacity: 0, y: 16 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.5) }}
-           className={`group cursor-pointer ${isFeatured ? 'col-span-2 row-span-2' : ''}`}
-           onClick={() => handlePlay(idx)}
+            key="loading"
+            initial={{ opacity: 0, y: 12 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10"
           >
-           {/* Featured card (first result, md+ only) */}
-           {isFeatured ? (
-            <div className="relative h-full">
-             <div className={`relative w-full h-full min-h-[280px] rounded-2xl overflow-hidden border transition-all duration-300 ${isCurrentlyPlaying ? 'border-white/40' : 'border-white/10 group-hover:border-white/20'}`}>
-              {track.coverArtUrl ? (
-               <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700" loading="lazy"/>
-              ) : (
-               <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Music className="text-zinc-700 w-16 h-16"/></div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"/>
-              {/* Featured badge */}
-              <div className="absolute top-4 left-4 px-2.5 py-1 rounded-md bg-white/15 backdrop-blur-md border border-white/20 z-10">
-               <span className="text-[10px] font-bold text-white uppercase tracking-wider">Top Match</span>
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900/90 border border-white/10 flex items-end justify-center gap-1 p-4 shadow-2xl">
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <div 
+                      key={i} 
+                      className="w-1 rounded-full bg-white eq-bar" 
+                      style={{ height: '100%', animationDelay: `${i * 0.15}s` }} 
+                    />
+                  ))}
+                </div>
               </div>
-              {/* Play overlay */}
-              <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-               <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-2xl">
-                {isCurrentlyPlaying ? <Pause size={28} fill="currentColor"/> : <Play size={28} fill="currentColor" className="ml-1"/>}
-               </div>
-              </div>
-              {/* Bottom info */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
-               <h3 className="text-xl font-bold text-white tracking-tight truncate mb-1">{track.title}</h3>
-               <p className="text-sm text-zinc-400 font-medium truncate">{track.artist}</p>
-              </div>
-              {/* Like */}
-              <button
-               className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center z-10 transition-all active:scale-90 ${isLiked ? 'bg-white' : 'bg-black/40 backdrop-blur-md border border-white/10 opacity-0 group-hover:opacity-100'}`}
-               onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}>
-               <Heart size={16} className={isLiked ? 'text-black fill-black' : 'text-white'} />
-              </button>
-             </div>
+              <p className="text-base md:text-lg font-bold text-white tracking-tight">Finding audio streams…</p>
             </div>
-           ) : (
-            /* Regular card */
-            <div>
-             <div className={`relative aspect-square rounded-xl overflow-hidden mb-2.5 border transition-all duration-300 ${isCurrentlyPlaying ? 'border-white/40 shadow-lg' : 'border-white/5 group-hover:border-white/15 bg-zinc-900'}`}>
-              {track.coverArtUrl ? (
-               <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy"/>
-              ) : (
-               <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Music className="text-zinc-700 w-8 h-8"/></div>
-              )}
-              {/* Hover overlay */}
-              <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-               <div className={`w-11 h-11 rounded-full bg-white flex items-center justify-center text-black shadow-xl transition-transform duration-200 ${isCurrentlyPlaying ? 'scale-100' : 'scale-90 group-hover:scale-100'}`}>
-                {isCurrentlyPlaying ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor" className="ml-0.5"/>}
-               </div>
-              </div>
-              {/* Rank badge */}
-              {idx > 0 && idx <= 3 && (
-               <div className="absolute top-2 left-2 w-6 h-6 rounded-md bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center border border-white/10 z-10">
-                <span className="text-xs font-bold font-mono text-white">{idx + 1}</span>
-               </div>
-              )}
-              {/* Like button */}
-              <button
-               className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all active:scale-90 ${isLiked ? 'bg-white scale-100' : 'bg-black/50 scale-0 group-hover:scale-100 border border-white/10'}`}
-               onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}>
-               <Heart size={12} className={isLiked ? 'text-black fill-black' : 'text-white'} />
-              </button>
-              {/* Equalizer */}
-              {isCurrentlyPlaying && (
-               <div className="absolute bottom-2 left-2 flex items-end gap-[2px] h-3 z-10">
-                {[0,1,2].map(i => <div key={i} className="w-[2px] rounded-full bg-white eq-bar" style={{ height: '100%' }} />)}
-               </div>
-              )}
-              {/* Context menu */}
-              <div className="hidden md:block absolute bottom-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-               <TrackContextMenu track={track} />
-              </div>
-             </div>
-             <h3 className={`font-semibold truncate text-sm tracking-tight transition-colors ${isCurrentlyPlaying ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`} title={track.title}>
-              {track.title}
-             </h3>
-             <p className="text-xs text-zinc-600 font-medium truncate mt-0.5 group-hover:text-zinc-500 transition-colors" title={track.artist}>{track.artist}</p>
+
+            {/* Skeleton Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mt-2">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="animate-pulse" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="aspect-square rounded-2xl bg-zinc-900 border border-white/5 mb-3" />
+                  <div className="h-3.5 w-3/4 rounded-md bg-zinc-900 mb-2" />
+                  <div className="h-2.5 w-1/2 rounded-md bg-zinc-900/60" />
+                </div>
+              ))}
             </div>
-           )}
           </motion.div>
-         );
-        })}
+        )}
 
-       </div>
-      )}
+        {/* ═══════════════════════════════════════════
+            SEARCH RESULTS VIEW
+            ═══════════════════════════════════════════ */}
+        {hasResults && (
+          <motion.div 
+            key="results"
+            initial={{ opacity: 0, y: 12 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10 pb-12"
+          >
+            {/* ── ARTIST SPOTLIGHT BANNER (When artist matches) ── */}
+            {searchedArtist && (
+              <div className="relative rounded-3xl overflow-hidden mb-8 border border-white/10 shadow-2xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950">
+                <div className="absolute inset-0 z-0">
+                  {searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb ? (
+                    <img
+                      src={searchedArtist.strArtistFanart || searchedArtist.strArtistBanner || searchedArtist.strArtistWideThumb}
+                      alt={searchedArtist.strArtist}
+                      className="w-full h-full object-cover brightness-[0.35] filter contrast-110"
+                    />
+                  ) : (
+                    <ArtImage
+                      artist={searchedArtist.strArtist}
+                      type="artist"
+                      className="w-full h-full object-cover brightness-[0.3]"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-zinc-950/70 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950/80" />
+                </div>
 
-      {/* ── LIST VIEW ── */}
-      {activeView === 'list' && (
-       <div>
-        {/* Column headers */}
-        <div className="hidden sm:flex items-center gap-4 px-4 py-2 text-[10px] font-semibold text-zinc-600 uppercase tracking-widest border-b border-white/5 mb-1">
-         <div className="w-8 text-center">#</div>
-         <div className="w-12 md:w-14">  </div>
-         <div className="flex-1">Title</div>
-         <div className="hidden md:block w-44">Artist</div>
-         <div className="w-14 text-right"><Clock size={11}/></div>
-         <div className="w-20"></div>
-        </div>
-        <div className="space-y-0.5">
-         {results.map((track, idx) => {
-          const isCurrentlyPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
-          const isLiked = (likedSongs || []).some(t => t.id === track.id);
-          return (
-           <motion.div 
-            key={track.id + idx}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.4) }}
-            onClick={() => handlePlay(idx)}
-            className={`group flex items-center gap-4 px-4 py-2 rounded-xl cursor-pointer transition-colors ${
-             isCurrentlyPlaying ? 'bg-white/10' : 'hover:bg-white/[0.04]'
-            }`}>
-            {/* Number */}
-            <div className="hidden sm:flex w-8 items-center justify-center shrink-0">
-             {isCurrentlyPlaying ? (
-              <div className="flex items-end gap-[2px] h-3.5">
-               {[0,1,2].map(i => <div key={i} className="w-[2px] rounded-full bg-white eq-bar" style={{ height: '100%' }}/>)}
+                <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-5 min-w-0">
+                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-zinc-900 shrink-0 border-2 border-white/20 shadow-2xl relative">
+                      {searchedArtist.strArtistThumb ? (
+                        <img src={searchedArtist.strArtistThumb} alt={searchedArtist.strArtist} className="w-full h-full object-cover" />
+                      ) : (
+                        <ArtImage artist={searchedArtist.strArtist} type="artist" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30 backdrop-blur-md">
+                          <CheckCircle size={10} className="text-blue-400" />
+                          Verified Artist
+                        </span>
+                        {searchedArtist.strGenre && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-zinc-300 bg-white/10 border border-white/10">
+                            {searchedArtist.strGenre}
+                          </span>
+                        )}
+                        {searchedArtist.strCountry && (
+                          <span className="text-[11px] font-medium text-zinc-400 hidden sm:inline-flex items-center gap-1">
+                            <MapPin size={11} className="text-zinc-500" />
+                            {searchedArtist.strCountry}
+                          </span>
+                        )}
+                      </div>
+
+                      <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight drop-shadow-md truncate">
+                        {searchedArtist.strArtist}
+                      </h2>
+
+                      {(searchedArtist.strBiography || searchedArtist.strBiographyEN) && (
+                        <p className="text-xs md:text-sm text-zinc-300 line-clamp-2 max-w-2xl mt-1.5 leading-relaxed font-normal">
+                          {searchedArtist.strBiography || searchedArtist.strBiographyEN}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => {
+                        setQueue(results);
+                        playTrack(0);
+                      }}
+                      className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-white text-black px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-zinc-200 transition-all shadow-xl cursor-pointer"
+                    >
+                      <Play size={14} fill="currentColor" />
+                      <span>Play Artist</span>
+                    </motion.button>
+
+                    <button
+                      onClick={() => navigate('/albums', { state: { artist: searchedArtist.strArtist } })}
+                      className="flex-1 md:flex-initial flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/15 px-5 py-3 rounded-full text-xs font-bold uppercase tracking-wider transition-all backdrop-blur-md cursor-pointer"
+                    >
+                      <span>Discography</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
               </div>
-             ) : (
-              <span className={`text-sm font-mono font-medium ${idx < 3 ? 'text-zinc-300' : 'text-zinc-700'} group-hover:text-zinc-400 transition-colors`}>{idx + 1}</span>
-             )}
-            </div>
-            {/* Cover */}
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden bg-zinc-900 shrink-0 relative border border-white/5">
-             {track.coverArtUrl ? (
-              <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover" loading="lazy"/>
-             ) : (
-              <div className="w-full h-full flex items-center justify-center"><Music size={16} className="text-zinc-700"/></div>
-             )}
-             <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-              {isCurrentlyPlaying ? <Pause size={14} fill="white"/> : <Play size={14} fill="white" className="ml-0.5"/>}
-             </div>
-            </div>
-            {/* Title + artist (mobile) */}
-            <div className="flex-1 min-w-0">
-             <p className={`font-medium text-sm truncate transition-colors ${isCurrentlyPlaying ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>{track.title}</p>
-             <p className="text-xs text-zinc-600 truncate mt-0.5 md:hidden">{track.artist}</p>
-            </div>
-            {/* Artist (desktop) */}
-            <span className="hidden md:block w-44 text-sm text-zinc-600 truncate group-hover:text-zinc-400 transition-colors">{track.artist}</span>
-            {/* Duration */}
-            <span className="hidden sm:block w-14 text-right text-xs font-mono text-zinc-700 group-hover:text-zinc-500 transition-colors">{formatDuration(track.duration || 0)}</span>
-            {/* Actions */}
-            <div className="flex items-center gap-1 w-20 justify-end">
-             <button className="w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90"
-              onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}>
-              <Heart size={14} className={isLiked ? 'fill-white text-white' : 'text-zinc-700 group-hover:text-zinc-400'} />
-             </button>
-             <div onClick={e => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <TrackContextMenu track={track} />
-             </div>
-            </div>
-           </motion.div>
-          );
-         })}
-        </div>
-       </div>
-      )}
-     </motion.div>
-    )}
+            )}
 
-    {/* ═══════════════════════════════════════════
-        BROWSE GENRES — Asymmetric bento grid
-        ═══════════════════════════════════════════ */}
-    {showDiscovery && (
-     <motion.div key="discovery"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.3 }}
-      className="px-4 md:px-8 lg:px-10 pb-12">
-      <h2 className="text-lg font-bold text-white tracking-tight mb-5">
-       Browse genres
-      </h2>
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-       {BROWSE_GENRES.map((genre, idx) => (
-        <motion.div
-         key={genre.name}
-         initial={{ opacity: 0, y: 20 }}
-         animate={{ opacity: 1, y: 0 }}
-         transition={{ duration: 0.35, delay: idx * 0.04 }}
-         onClick={() => executeSearch(genre.name)}
-         className={`relative overflow-hidden rounded-2xl cursor-pointer group border border-white/5 ${genre.accentBorder} transition-all duration-300 ${
-          genre.size === 'tall' ? 'row-span-2 h-auto min-h-[160px] md:min-h-[200px]' : 'h-32 md:h-36'
-         }`}>
-         {/* Background image */}
-         <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
-          <ArtImage 
-           artist={genre.artist}
-           album={genre.album}
-           type="genre"
-           fallbackGradient={genre.accent}
-           className="w-full h-full object-cover"
-          />
-          {/* Genre accent overlay */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${genre.accent} opacity-60`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"/>
-         </div>
-         
-         {/* Content */}
-         <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
-          <h3 className="text-base md:text-lg font-bold text-white drop-shadow-md tracking-tight leading-tight">{genre.name}</h3>
-          <p className="text-[11px] text-zinc-300/80 font-medium mt-0.5 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">{genre.description}</p>
-         </div>
-         
-         {/* Play button on hover */}
-         <div className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all duration-200 border border-white/20 z-10">
-          <Play size={14} fill="white" className="text-white ml-0.5"/>
-         </div>
-        </motion.div>
-       ))}
-      </div>
-     </motion.div>
-    )}
-   </AnimatePresence>
-  </div>
- );
+            {/* ── Results Header with Filter Chips & View Switcher ── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-3 border-b border-white/5">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                  <span>Results for</span>
+                  <span className="text-zinc-400 font-medium">"{query}"</span>
+                  <span className="text-xs font-mono text-zinc-400 bg-zinc-900 px-2.5 py-0.5 rounded-full border border-white/10">
+                    {results.length}
+                  </span>
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Result Filter Chips */}
+                <div className="flex items-center gap-1 p-1 bg-zinc-900/90 border border-white/10 rounded-xl">
+                  <button
+                    onClick={() => setActiveFilter('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      activeFilter === 'all' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setActiveFilter('tracks')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      activeFilter === 'tracks' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Tracks
+                  </button>
+                </div>
+
+                {/* View Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-zinc-900/90 border border-white/10 rounded-xl">
+                  <button 
+                    onClick={() => setActiveView('grid')}
+                    aria-label="Grid view"
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                      activeView === 'grid' ? 'bg-white/15 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <LayoutGrid size={15} />
+                  </button>
+                  <button 
+                    onClick={() => setActiveView('list')}
+                    aria-label="List view"
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                      activeView === 'list' ? 'bg-white/15 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <List size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── TOP RESULT SPOTLIGHT ── */}
+            {filteredResults.length > 0 && (
+              <div className="mb-8">
+                <div className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">
+                  Top Result
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* #1 Top Match Card */}
+                  {(() => {
+                    const topTrack = filteredResults[0];
+                    const isTopPlaying = currentIndex === 0 && queue[0]?.id === topTrack.id && isPlaying;
+                    const isLiked = (likedSongs || []).some(t => t.id === topTrack.id);
+
+                    return (
+                      <motion.div 
+                        whileHover={{ y: -2 }}
+                        onClick={() => handlePlay(0)}
+                        className="lg:col-span-1 p-5 rounded-3xl bg-zinc-950/80 border border-white/10 hover:border-white/20 transition-all cursor-pointer group relative overflow-hidden shadow-xl"
+                      >
+                        <div className="flex sm:flex-row lg:flex-col gap-4 items-start">
+                          <div className="relative w-28 h-28 sm:w-32 sm:h-32 lg:w-44 lg:h-44 rounded-2xl overflow-hidden bg-zinc-900 shrink-0 border border-white/10 shadow-lg">
+                            {topTrack.coverArtUrl ? (
+                              <img src={topTrack.coverArtUrl} alt={topTrack.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Music size={32} className="text-zinc-600" /></div>
+                            )}
+                            <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                              isTopPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                            }`}>
+                              <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-2xl active:scale-[0.96] transition-transform">
+                                {isTopPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg md:text-xl font-bold text-white tracking-tight truncate group-hover:text-white">
+                              {topTrack.title}
+                            </h3>
+                            <p className="text-sm text-zinc-400 font-medium truncate mt-0.5">
+                              {topTrack.artist}
+                            </p>
+                            <div className="flex items-center gap-3 mt-4">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleLikedSong(topTrack); }}
+                                aria-label={isLiked ? "Unlike top track" : "Like top track"}
+                                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition-all duration-150 active:scale-[0.96]"
+                              >
+                                <Heart size={14} className={isLiked ? 'text-rose-500 fill-rose-500' : ''} />
+                              </button>
+                              <span className="text-xs font-mono tabular-nums text-zinc-500">
+                                {formatDuration(topTrack.duration || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
+
+                  {/* Companion Tracks */}
+                  <div className="lg:col-span-2 space-y-1.5">
+                    {filteredResults.slice(1, 5).map((track, relativeIdx) => {
+                      const actualIdx = relativeIdx + 1;
+                      const isCurrentlyPlaying = currentIndex === actualIdx && queue[actualIdx]?.id === track.id && isPlaying;
+                      const isLiked = (likedSongs || []).some(t => t.id === track.id);
+
+                      return (
+                        <div
+                          key={track.id + actualIdx}
+                          onClick={() => handlePlay(actualIdx)}
+                          className={`flex items-center justify-between p-2.5 md:p-3 rounded-2xl border transition-all cursor-pointer group ${
+                            isCurrentlyPlaying 
+                              ? 'bg-white/10 border-white/20' 
+                              : 'bg-zinc-950/60 hover:bg-white/[0.04] border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 shrink-0 border border-white/10">
+                              {track.coverArtUrl ? (
+                                <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center"><Music size={16} className="text-zinc-600" /></div>
+                              )}
+                              <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${
+                                isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`}>
+                                {isCurrentlyPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">{track.title}</p>
+                              <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-xs font-mono text-zinc-500">
+                              {formatDuration(track.duration || 0)}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}
+                              className="w-8 h-8 rounded-full flex items-center justify-center transition-all text-zinc-500 hover:text-white"
+                            >
+                              <Heart size={14} className={isLiked ? 'text-rose-500 fill-rose-500' : ''} />
+                            </button>
+                            <div onClick={e => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <TrackContextMenu track={track} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── ALL SONGS (GRID OR LIST) ── */}
+            <div className="mt-8">
+              <div className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center justify-between">
+                <span>All Tracks</span>
+                <span className="text-zinc-600 font-mono text-[11px]">{filteredResults.length} tracks</span>
+              </div>
+
+              {activeView === 'grid' ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 md:gap-4">
+                  {filteredResults.map((track, idx) => {
+                    const isCurrentlyPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
+                    const isLiked = (likedSongs || []).some(t => t.id === track.id);
+
+                    return (
+                      <motion.div 
+                        key={track.id + idx}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }}
+                        whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handlePlay(idx)}
+                        className="group cursor-pointer p-2.5 rounded-2xl bg-zinc-950/40 hover:bg-white/[0.04] border border-white/5 hover:border-white/10 transition-all"
+                      >
+                        <div className="relative aspect-square rounded-xl overflow-hidden mb-2.5 bg-zinc-900 border border-white/10">
+                          {track.coverArtUrl ? (
+                            <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Music size={24} className="text-zinc-600" /></div>
+                          )}
+
+                          {/* Hover Play Button */}
+                          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                            isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}>
+                            <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-[0.96] transition-transform">
+                              {isCurrentlyPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                            </div>
+                          </div>
+
+                          {/* Like Button */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}
+                            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all ${
+                              isLiked ? 'bg-white text-black' : 'bg-black/50 text-white opacity-0 group-hover:opacity-100'
+                            }`}
+                          >
+                            <Heart size={12} className={isLiked ? 'fill-black' : ''} />
+                          </button>
+
+                          {/* Equalizer */}
+                          {isCurrentlyPlaying && (
+                            <div className="absolute bottom-2 left-2 flex items-end gap-[2px] h-3 z-10 bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                              {[0, 1, 2].map(i => <div key={i} className="w-[2px] rounded-full bg-white eq-bar" style={{ height: '100%' }} />)}
+                            </div>
+                          )}
+                        </div>
+
+                        <h3 className="font-semibold text-xs md:text-sm text-white truncate tracking-tight" title={track.title}>
+                          {track.title}
+                        </h3>
+                        <p className="text-[11px] text-zinc-400 truncate mt-0.5" title={track.artist}>
+                          {track.artist}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* List View */
+                <div className="space-y-1">
+                  {filteredResults.map((track, idx) => {
+                    const isCurrentlyPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
+                    const isLiked = (likedSongs || []).some(t => t.id === track.id);
+
+                    return (
+                      <div
+                        key={track.id + idx}
+                        onClick={() => handlePlay(idx)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer group ${
+                          isCurrentlyPlaying ? 'bg-white/10 border-white/20' : 'hover:bg-white/[0.04] border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span className="w-5 text-center text-xs font-mono text-zinc-500">
+                            {idx + 1}
+                          </span>
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-white/5">
+                            {track.coverArtUrl ? (
+                              <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center"><Music size={14} className="text-zinc-600" /></div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{track.title}</p>
+                            <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs font-mono text-zinc-500">
+                            {formatDuration(track.duration || 0)}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-white"
+                          >
+                            <Heart size={14} className={isLiked ? 'text-rose-500 fill-rose-500' : ''} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════
+          DISCOVERY SECTIONS (Before Searching)
+          ═══════════════════════════════════════════ */}
+      {showDiscovery && (
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10 space-y-12">
+          
+          {/* ── SECTION 1: TRENDING RIGHT NOW (Audio Carousel) ── */}
+          {(trendingTracks.length > 0 || isTrendingLoading) && (
+            <div>
+              <div className="flex items-baseline justify-between mb-4">
+                <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                  Trending Right Now
+                </h2>
+                <button
+                  onClick={() => executeSearch('top trending songs')}
+                  className="text-xs font-semibold text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <span>See all</span>
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+
+              {/* Horizontal Scroll Deck */}
+              <div 
+                ref={trendingScrollRef}
+                className="flex gap-3 md:gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0"
+              >
+                {isTrendingLoading && trendingTracks.length === 0 ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="shrink-0 w-36 sm:w-40 md:w-44 p-3 rounded-2xl bg-zinc-950/70 border border-white/5 animate-pulse">
+                      <div className="aspect-square rounded-xl bg-zinc-900 mb-2.5" />
+                      <div className="h-3.5 w-3/4 rounded bg-zinc-900 mb-1.5" />
+                      <div className="h-2.5 w-1/2 rounded bg-zinc-900/60" />
+                    </div>
+                  ))
+                ) : (
+                  trendingTracks.slice(0, 10).map((track, idx) => {
+                    const isCurrentTrendingPlaying = currentIndex === idx && queue[idx]?.id === track.id && isPlaying;
+                    const isLiked = (likedSongs || []).some(t => t.id === track.id);
+
+                    return (
+                      <motion.div
+                        key={track.id + idx}
+                        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handlePlayTrending(idx)}
+                        className="shrink-0 w-36 sm:w-40 md:w-44 p-3 rounded-2xl bg-zinc-950/70 hover:bg-white/[0.05] border border-white/5 hover:border-white/15 transition-all cursor-pointer group shadow-lg"
+                      >
+                        <div className="relative aspect-square rounded-xl overflow-hidden mb-2.5 bg-zinc-900 border border-white/10">
+                          {track.coverArtUrl ? (
+                            <img src={track.coverArtUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Music size={24} className="text-zinc-600" /></div>
+                          )}
+
+                          {/* Like Button */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLikedSong(track); }}
+                            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center z-10 transition-all ${
+                              isLiked ? 'bg-white text-black' : 'bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:scale-105'
+                            }`}
+                          >
+                            <Heart size={12} className={isLiked ? 'fill-black' : ''} />
+                          </button>
+
+                          {/* Play Overlay */}
+                          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                            isCurrentTrendingPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}>
+                            <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-[0.96] transition-transform">
+                              {isCurrentTrendingPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                            </div>
+                          </div>
+
+                          {/* Equalizer */}
+                          {isCurrentTrendingPlaying && (
+                            <div className="absolute bottom-2 left-2 flex items-end gap-[2px] h-3 z-10 bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                              {[0, 1, 2].map(i => <div key={i} className="w-[2px] rounded-full bg-white eq-bar" style={{ height: '100%' }} />)}
+                            </div>
+                          )}
+                        </div>
+
+                        <h3 className="font-semibold text-xs md:text-sm text-white truncate tracking-tight" title={track.title}>
+                          {track.title}
+                        </h3>
+                        <p className="text-[11px] text-zinc-400 truncate mt-0.5" title={track.artist}>
+                          {track.artist}
+                        </p>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 2: CURATED MOODS (Rich, Textured Artwork Cards) ── */}
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight mb-4">
+              Curated Moods
+            </h2>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {SONIC_MOODS.map((mood) => (
+                <motion.div
+                  key={mood.title}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => executeSearch(mood.query)}
+                  className={`relative overflow-hidden rounded-2xl md:rounded-3xl cursor-pointer group border border-white/5 ${mood.border} transition-all duration-200 h-36 md:h-44 shadow-lg`}
+                >
+                  {/* Mood Atmospheric Artwork Background */}
+                  <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105">
+                    <img 
+                      src={mood.image} 
+                      alt={mood.title} 
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${mood.accent} opacity-80`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+                  </div>
+
+                  {/* Content Island */}
+                  <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
+                    <h3 className="text-base md:text-xl font-bold text-white drop-shadow-md tracking-tight leading-tight">
+                      {mood.title}
+                    </h3>
+                    <p className="text-[11px] text-zinc-300/80 font-normal mt-0.5 line-clamp-1">
+                      {mood.subtitle}
+                    </p>
+                  </div>
+
+                  {/* Hover Floating Glass Play Button */}
+                  <div className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 border border-white/20 z-10 shadow-lg">
+                    <Play size={14} fill="white" className="text-white ml-0.5" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── SECTION 3: BROWSE GENRES ── */}
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight mb-4">
+              Browse Genres
+            </h2>
+
+            {/* Symmetrical Grid: 2 cols on mobile (4 rows), 4 cols on desktop (2 rows) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {BROWSE_GENRES.map((genre, idx) => (
+                <motion.div
+                  key={genre.name}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: idx * 0.02 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => executeSearch(genre.name)}
+                  className={`relative overflow-hidden rounded-2xl md:rounded-3xl cursor-pointer group border border-white/5 ${genre.accentBorder} transition-all duration-200 h-36 md:h-44 shadow-lg`}
+                >
+                  {/* Artwork */}
+                  <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105">
+                    <ArtImage 
+                      artist={genre.artist}
+                      album={genre.album}
+                      type="genre"
+                      fallbackGradient={genre.accent}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${genre.accent} opacity-80`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  </div>
+
+                  {/* Content Island */}
+                  <div className="absolute inset-0 p-3.5 md:p-4 flex flex-col justify-end z-10">
+                    <h3 className="text-base md:text-xl font-bold text-white drop-shadow-md tracking-tight leading-tight">
+                      {genre.name}
+                    </h3>
+                    <p className="text-[11px] text-zinc-300/80 font-normal mt-0.5 line-clamp-1">
+                      {genre.description}
+                    </p>
+                  </div>
+
+                  {/* Hover Floating Glass Play Button */}
+                  <div className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-200 border border-white/20 z-10 shadow-lg">
+                    <Play size={14} fill="white" className="text-white ml-0.5" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
 }

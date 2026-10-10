@@ -53,7 +53,8 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
             </h2>
             <button 
               onClick={onClose}
-              className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors active:scale-90"
+              aria-label="Close modal"
+              className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/[0.08] rounded-full transition-all duration-150 active:scale-[0.96] cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -61,7 +62,7 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
 
           <form onSubmit={handleSubmit}>
             <div className="mb-8">
-              <label htmlFor="playlist-name" className="block text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-3">
+              <label htmlFor="playlist-name" className="block text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-3">
                 Playlist Name
               </label>
               <input
@@ -70,7 +71,7 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Awesome Mix..."
-                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-xl px-5 py-4 text-[15px] font-bold text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-[15px] font-bold text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/30 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
                 autoFocus
               />
             </div>
@@ -79,14 +80,14 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreate }: CreatePlaylis
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-3 text-[13px] font-bold text-zinc-400 hover:text-white hover:bg-white/[0.04] rounded-xl transition-colors active:scale-95"
+                className="px-6 py-3 text-[13px] font-bold text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl transition-all duration-150 active:scale-[0.96] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!name.trim()}
-                className="px-6 py-3 bg-white text-zinc-950 text-[13px] font-black uppercase tracking-wider rounded-xl hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_4px_16px_rgba(255,255,255,0.2)] active:scale-95"
+                className="px-6 py-3 bg-white text-zinc-950 text-[13px] font-black uppercase tracking-wider rounded-xl hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 shadow-[0_4px_16px_rgba(255,255,255,0.2)] active:scale-[0.96] cursor-pointer"
               >
                 Create
               </button>

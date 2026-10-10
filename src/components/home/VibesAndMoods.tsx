@@ -197,7 +197,7 @@ export function VibesAndMoods() {
                     ) : isCurrentActive ? (
                       <Play size={15} fill="white" className="ml-0.5 text-white" />
                     ) : (
-                      <Play size={15} fill="white" className="ml-0.5 text-white scale-90 group-hover:scale-100 transition-transform" />
+                      <Play size={15} fill="white" className="ml-0.5 text-white scale-95 group-hover:scale-100 transition-transform" />
                     )}
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export function VibesAndMoods() {
                     <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
                       Radio
                     </span>
-                    <div className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center transition-all duration-200 shadow-md transform scale-90 group-hover:scale-100">
+                    <div className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center transition-all duration-200 shadow-md transform scale-95 group-hover:scale-100">
                       {isLoading ? (
                         <Loader2 size={12} className="animate-spin text-black" />
                       ) : isCurrentPlaying ? (

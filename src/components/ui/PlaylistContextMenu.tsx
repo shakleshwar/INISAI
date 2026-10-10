@@ -98,7 +98,8 @@ export function PlaylistContextMenu({ playlist }: PlaylistContextMenuProps) {
       <button
         ref={buttonRef}
         onClick={openMenu}
-        className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-full transition-colors opacity-0 group-hover:opacity-100 active:scale-90"
+        aria-label="Playlist options"
+        className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.08] rounded-full transition-all duration-150 opacity-0 group-hover:opacity-100 active:scale-[0.96]"
       >
         <MoreVertical size={18} />
       </button>

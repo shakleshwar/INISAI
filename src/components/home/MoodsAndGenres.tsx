@@ -15,7 +15,7 @@ export function MoodsAndGenres() {
   const navigate = useNavigate();
 
   return (
-    <section className="my-8 sm:my-14 relative group/genres">
+    <section className="relative group/genres">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <div className="flex items-center gap-2.5">
