@@ -5,14 +5,32 @@ import { Home } from './pages/Home';
 import { AudioProvider } from './components/AudioProvider';
 import { useSettingsStore, applyThemeTokens } from './store/useSettingsStore';
 
-const Library = lazy(() => import('./pages/Library').then(m => ({ default: m.Library })));
-const LocalMusic = lazy(() => import('./pages/LocalMusic').then(m => ({ default: m.LocalMusic })));
-const Genres = lazy(() => import('./pages/Genres').then(m => ({ default: m.Genres })));
-const Albums = lazy(() => import('./pages/Albums').then(m => ({ default: m.Albums })));
-const RecentSongs = lazy(() => import('./pages/RecentSongs').then(m => ({ default: m.RecentSongs })));
-const LikedSongs = lazy(() => import('./pages/LikedSongs').then(m => ({ default: m.LikedSongs })));
-const Playlist = lazy(() => import('./pages/Playlist').then(m => ({ default: m.Playlist })));
-const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+function lazyRetry(factory: () => Promise<any>, name?: string) {
+  return lazy(async () => {
+    try {
+      const m = await factory();
+      const comp = (name && m[name]) || m.default || m;
+      return { default: comp };
+    } catch (error) {
+      console.warn('Chunk import failed, attempting reload for new version...', error);
+      const key = 'chunk_reload_' + (name || 'route');
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      throw error;
+    }
+  });
+}
+
+const Library = lazyRetry(() => import('./pages/Library'), 'Library');
+const LocalMusic = lazyRetry(() => import('./pages/LocalMusic'), 'LocalMusic');
+const Genres = lazyRetry(() => import('./pages/Genres'), 'Genres');
+const Albums = lazyRetry(() => import('./pages/Albums'), 'Albums');
+const RecentSongs = lazyRetry(() => import('./pages/RecentSongs'), 'RecentSongs');
+const LikedSongs = lazyRetry(() => import('./pages/LikedSongs'), 'LikedSongs');
+const Playlist = lazyRetry(() => import('./pages/Playlist'), 'Playlist');
+const Settings = lazyRetry(() => import('./pages/Settings'), 'Settings');
 
 function App() {
   useEffect(() => {

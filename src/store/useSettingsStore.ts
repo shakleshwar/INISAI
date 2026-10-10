@@ -142,7 +142,11 @@ export const useSettingsStore = create<SettingsState>()(
         });
       },
       setEqBand: (index, val) => {
-        const bands = [...get().eqBands] as [number, number, number, number, number];
+        const currentBands = get().eqBands;
+        const base = (Array.isArray(currentBands) && currentBands.length === 5)
+          ? currentBands
+          : EQ_PRESETS_DATA.flat;
+        const bands = [...base] as [number, number, number, number, number];
         bands[index] = val;
         set({ eqBands: bands, equalizerPreset: 'flat' });
       },
@@ -172,9 +176,25 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'inisai_settings_store',
+      merge: (persistedState, currentState) => {
+        const p = (persistedState as Partial<SettingsState>) || {};
+        const safeEqBands = (Array.isArray(p.eqBands) && p.eqBands.length === 5)
+          ? p.eqBands
+          : (EQ_PRESETS_DATA[p.equalizerPreset || 'flat'] || EQ_PRESETS_DATA.flat);
+
+        return {
+          ...currentState,
+          ...p,
+          eqBands: [...safeEqBands] as [number, number, number, number, number],
+          equalizerPreset: p.equalizerPreset || 'flat',
+          crossfadeDuration: typeof p.crossfadeDuration === 'number' ? p.crossfadeDuration : 3,
+          theme: (p.theme && THEMES_DATA[p.theme]) ? p.theme : 'obsidian',
+          accentColor: (p.accentColor && ACCENT_COLORS_DATA[p.accentColor]) ? p.accentColor : 'crimson',
+        };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
-          applyThemeTokens(state.theme, state.accentColor);
+          applyThemeTokens(state.theme || 'obsidian', state.accentColor || 'crimson');
           if (state.streamingService) {
             localStorage.setItem('streamingService', state.streamingService);
           }

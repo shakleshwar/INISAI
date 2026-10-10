@@ -51,8 +51,10 @@ interface ToastNotice {
 export function Settings() {
   const navigate = useNavigate();
   const settings = useSettingsStore();
-  const recentSongs = useAudioStore(s => s.recentSongs);
-  const likedSongs = useAudioStore(s => s.likedSongs);
+  const rawRecent = useAudioStore(s => s.recentSongs);
+  const recentSongs = Array.isArray(rawRecent) ? rawRecent : [];
+  const rawLiked = useAudioStore(s => s.likedSongs);
+  const likedSongs = Array.isArray(rawLiked) ? rawLiked : [];
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -421,9 +423,9 @@ export function Settings() {
 
             {/* 5-Band Studio Equalizer & Crossfade */}
             <StudioEqualizer
-              eqBands={settings.eqBands}
-              equalizerPreset={settings.equalizerPreset}
-              crossfadeDuration={settings.crossfadeDuration}
+              eqBands={settings.eqBands || [0, 0, 0, 0, 0]}
+              equalizerPreset={settings.equalizerPreset || 'flat'}
+              crossfadeDuration={settings.crossfadeDuration ?? 3}
               onBandChange={(idx, val) => settings.setEqBand(idx, val)}
               onPresetChange={(preset) => {
                 settings.setEqualizerPreset(preset);

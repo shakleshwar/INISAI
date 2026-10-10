@@ -55,12 +55,16 @@ export function LocalMusic() {
     currentIndex, 
     play, 
     pause, 
-    playlists,
-    likedSongs,
-    recentSongs,
+    playlists: rawPlaylists,
+    likedSongs: rawLiked,
+    recentSongs: rawRecent,
     toggleLikedSong,
     isShuffled
   } = useAudioStore();
+
+  const playlists = useMemo(() => Array.isArray(rawPlaylists) ? rawPlaylists : [], [rawPlaylists]);
+  const likedSongs = useMemo(() => Array.isArray(rawLiked) ? rawLiked : [], [rawLiked]);
+  const recentSongs = useMemo(() => Array.isArray(rawRecent) ? rawRecent : [], [rawRecent]);
 
   useEffect(() => {
     db.loadAllLocalTracks()
@@ -221,8 +225,8 @@ export function LocalMusic() {
 
   const playlistCoverTrack = useMemo(() => {
     return playlists
-      .flatMap(p => p.tracks)
-      .find(t => Boolean(t.coverArtUrl));
+      .flatMap(p => p?.tracks || [])
+      .find(t => Boolean(t?.coverArtUrl));
   }, [playlists]);
 
   const isLikedPlaying = useMemo(() => {
@@ -1463,3 +1467,5 @@ function TrackRow({
     </div>
   );
 }
+
+export default LocalMusic;

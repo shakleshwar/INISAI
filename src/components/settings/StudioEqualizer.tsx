@@ -32,14 +32,22 @@ export function StudioEqualizer({
   const [activeDraggingNode, setActiveDraggingNode] = useState<number | null>(null);
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
+  // Guarantee valid 5-number tuple at all times
+  const safeBands: [number, number, number, number, number] = useMemo(() => {
+    if (Array.isArray(eqBands) && eqBands.length === 5) {
+      return eqBands.map(v => (typeof v === 'number' && !isNaN(v) ? v : 0)) as [number, number, number, number, number];
+    }
+    return [0, 0, 0, 0, 0];
+  }, [eqBands]);
+
   // Check if current band values match any preset exactly
   const activeMatchingPreset = useMemo(() => {
     const matched = (Object.keys(EQ_PRESETS_DATA) as EqPreset[]).find((presetKey) => {
       const presetValues = EQ_PRESETS_DATA[presetKey];
-      return presetValues.every((val, i) => val === eqBands[i]);
+      return presetValues.every((val, i) => val === safeBands[i]);
     });
     return matched ?? (equalizerPreset === 'flat' ? null : equalizerPreset);
-  }, [eqBands, equalizerPreset]);
+  }, [safeBands, equalizerPreset]);
 
   // ═══ Natural Smooth Parametric Curve Interpolation ═══
   const { curvePath, fillPath, controlPoints } = useMemo(() => {
@@ -51,7 +59,7 @@ export function StudioEqualizer({
     const xCoords = [50, 150, 250, 350, 450];
 
     // Compute accurate Y for each band
-    const points = eqBands.map((val, i) => {
+    const points = safeBands.map((val, i) => {
       const clamped = Math.max(-12, Math.min(12, val));
       const y = centerY - (clamped / 12) * yMaxDelta;
       return { x: xCoords[i], y, val: clamped };
@@ -405,7 +413,7 @@ export function StudioEqualizer({
       {/* ═══ 5 Physical Studio Fader Channels (Full Width, Zero Squeeze) ═══ */}
       <div className="grid grid-cols-5 gap-1.5 sm:gap-4 pt-1">
         {BANDS.map((band, idx) => {
-          const val = eqBands[idx] || 0;
+          const val = safeBands[idx] ?? 0;
           const pct = Math.max(0, Math.min(100, ((val + 12) / 24) * 100));
           const isBoost = val > 0;
           const isCut = val < 0;
