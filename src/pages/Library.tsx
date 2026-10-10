@@ -145,6 +145,39 @@ const BROWSE_GENRES = [
    COMPONENT
    ───────────────────────────────────────────── */
 
+// ── Module-level cache for Search Trending stability across navigation ──
+let memorySearchTrending: Track[] = [];
+let memorySearchTrendingTime = 0;
+let memoryTrendingScrollLeft = 0;
+
+const getInitialTrending = (): Track[] => {
+  try {
+    const audioState = useAudioStore.getState();
+    const region = audioState?.trendingRegion || 'Global';
+    const storeTracks = audioState?.cachedTrending?.[region] || audioState?.cachedTrending?.['Global'];
+    if (storeTracks && Array.isArray(storeTracks) && storeTracks.length > 0) {
+      return storeTracks;
+    }
+  } catch {}
+
+  if (memorySearchTrending.length > 0) {
+    return memorySearchTrending;
+  }
+
+  try {
+    const saved = sessionStorage.getItem('inisai_trending_search_cache');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memorySearchTrending = parsed;
+        return parsed;
+      }
+    }
+  } catch {}
+
+  return [];
+};
+
 export function Library() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -159,8 +192,9 @@ export function Library() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'tracks'>('all');
   const [searchFocused, setSearchFocused] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [trendingTracks, setTrendingTracks] = useState<Track[]>([]);
-  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
+  const initialTrending = useMemo(() => getInitialTrending(), []);
+  const [trendingTracks, setTrendingTracks] = useState<Track[]>(initialTrending);
+  const [isTrendingLoading, setIsTrendingLoading] = useState<boolean>(() => initialTrending.length === 0);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -177,7 +211,10 @@ export function Library() {
     play, 
     pause, 
     likedSongs, 
-    toggleLikedSong 
+    toggleLikedSong,
+    cachedTrending,
+    setCachedData,
+    trendingRegion
   } = useAudioStore();
 
   // ── Track main container scroll position for subtle sticky header styling ──
@@ -233,15 +270,55 @@ export function Library() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  // ── Fetch Trending Tracks for Discovery Section ──
+  // ── Fetch Trending Tracks for Discovery Section (Cached & Stable) ──
   useEffect(() => {
     let isMounted = true;
+    const region = trendingRegion || 'Global';
+
+    // Restore horizontal scroll position if returning to page
+    if (trendingScrollRef.current && memoryTrendingScrollLeft > 0) {
+      trendingScrollRef.current.scrollLeft = memoryTrendingScrollLeft;
+    }
+
+    // Determine available cached tracks
+    const existing = (cachedTrending && cachedTrending[region]?.length > 0)
+      ? cachedTrending[region]
+      : (cachedTrending && cachedTrending['Global']?.length > 0)
+        ? cachedTrending['Global']
+        : memorySearchTrending;
+
+    if (existing && existing.length > 0 && trendingTracks.length === 0) {
+      setTrendingTracks(existing);
+      setIsTrendingLoading(false);
+    }
+
+    // Cache TTL: 15 minutes
+    const isFresh = memorySearchTrendingTime > 0 && (Date.now() - memorySearchTrendingTime < 15 * 60 * 1000);
+
+    // If we have cached tracks and data is fresh, skip fetching completely!
+    if ((trendingTracks.length > 0 || (existing && existing.length > 0)) && isFresh) {
+      return () => {
+        if (trendingScrollRef.current) {
+          memoryTrendingScrollLeft = trendingScrollRef.current.scrollLeft;
+        }
+      };
+    }
+
     const fetchTrending = async () => {
-      setIsTrendingLoading(true);
+      // Only show skeletons if there are NO tracks to display
+      if (trendingTracks.length === 0 && (!existing || existing.length === 0)) {
+        setIsTrendingLoading(true);
+      }
       try {
-        const tracks = await api.getTrending();
+        const tracks = await api.getTrending(region);
         if (isMounted && tracks && tracks.length > 0) {
           setTrendingTracks(tracks);
+          memorySearchTrending = tracks;
+          memorySearchTrendingTime = Date.now();
+          setCachedData(region, tracks, null);
+          try {
+            sessionStorage.setItem('inisai_trending_search_cache', JSON.stringify(tracks));
+          } catch {}
         }
       } catch (err) {
         console.warn('Trending tracks fetch notice:', err);
@@ -249,9 +326,16 @@ export function Library() {
         if (isMounted) setIsTrendingLoading(false);
       }
     };
+
     fetchTrending();
-    return () => { isMounted = false; };
-  }, []);
+
+    return () => { 
+      isMounted = false;
+      if (trendingScrollRef.current) {
+        memoryTrendingScrollLeft = trendingScrollRef.current.scrollLeft;
+      }
+    };
+  }, [trendingRegion, setCachedData]);
 
   // ── Load Search History from LocalStorage ──
   useEffect(() => {

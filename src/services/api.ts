@@ -44,6 +44,8 @@ export interface AudioDBTrack {
   strMusicVid: string;
 }
 
+const trendingPromises = new Map<string, Promise<Track[]>>();
+
 export const api = {
   async searchOnlineTracks(query: string): Promise<Track[]> {
     const engine = localStorage.getItem('streamingService') || 'youtube';
@@ -71,12 +73,27 @@ export const api = {
   },
 
   async getTrending(region?: string): Promise<Track[]> {
-    const url = region ? `${API_BASE}/api/trending?region=${encodeURIComponent(region)}` : `${API_BASE}/api/trending`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error('Failed to fetch trending charts');
+    const key = region || 'Global';
+    const cached = trendingPromises.get(key);
+    if (cached) {
+      return cached;
     }
-    return res.json();
+    const url = region ? `${API_BASE}/api/trending?region=${encodeURIComponent(region)}` : `${API_BASE}/api/trending`;
+    const promise = (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error('Failed to fetch trending charts');
+        }
+        return await res.json();
+      } finally {
+        setTimeout(() => {
+          trendingPromises.delete(key);
+        }, 8000);
+      }
+    })();
+    trendingPromises.set(key, promise);
+    return promise;
   },
 
   getArt: async (artist: string, album?: string) => {
