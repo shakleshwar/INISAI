@@ -188,6 +188,7 @@ export const useSettingsStore = create<SettingsState>()(
           eqBands: [...safeEqBands] as [number, number, number, number, number],
           equalizerPreset: p.equalizerPreset || 'flat',
           crossfadeDuration: typeof p.crossfadeDuration === 'number' ? p.crossfadeDuration : 3,
+          streamingService: (p.streamingService === 'spotify' || p.streamingService === 'direct') ? 'youtube' : (p.streamingService || 'youtube'),
           theme: (p.theme && THEMES_DATA[p.theme]) ? p.theme : 'obsidian',
           accentColor: (p.accentColor && ACCENT_COLORS_DATA[p.accentColor]) ? p.accentColor : 'crimson',
         };

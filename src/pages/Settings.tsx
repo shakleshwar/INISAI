@@ -293,8 +293,8 @@ export function Settings() {
                     {[
                       { id: 'youtube', name: 'YouTube Music', desc: 'Highest catalog coverage & studio lossless metadata', icon: PlayCircle },
                       { id: 'soundcloud', name: 'SoundCloud', desc: 'Indie tracks, DJ sets, underground releases', icon: Cloud },
-                      { id: 'spotify', name: 'Spotify Web Mirror', desc: 'Curated playlists and algorithmic radio (Beta)', icon: Radio },
-                      { id: 'direct', name: 'Direct Stream API', desc: 'Raw high-bitrate audio bridge bypass', icon: Headphones },
+                      { id: 'spotify', name: 'Spotify Web Mirror', desc: 'Curated playlists and algorithmic radio integration', icon: Radio, comingSoon: true },
+                      { id: 'direct', name: 'Direct Stream API', desc: 'Raw high-bitrate audio bridge bypass', icon: Headphones, comingSoon: true },
                     ].map(srv => {
                       const isSelected = settings.streamingService === srv.id;
                       const SrvIcon = srv.icon;
@@ -302,27 +302,40 @@ export function Settings() {
                         <button
                           key={srv.id}
                           onClick={() => {
+                            if (srv.comingSoon) {
+                              showToast(`${srv.name} is coming soon in an upcoming release!`, 'info');
+                              return;
+                            }
                             settings.setStreamingService(srv.id as StreamingEngine);
                             showToast(`Streaming provider switched to ${srv.name}`);
                           }}
                           className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-150 active:scale-[0.98] cursor-pointer ${
                             isSelected 
                               ? 'bg-white/10 border-white/30 text-white shadow-sm' 
+                              : srv.comingSoon
+                              ? 'bg-black/20 border-white/5 text-zinc-400 hover:bg-white/[0.03] opacity-75'
                               : 'bg-black/20 border-white/5 text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                               isSelected ? 'bg-white text-black' : 'bg-white/5 text-zinc-400'
                             }`}>
                               <SrvIcon size={16} />
                             </div>
-                            <div>
-                              <div className="text-xs sm:text-sm font-semibold text-zinc-200">{srv.name}</div>
-                              <div className="text-[11px] text-zinc-500 hidden sm:block">{srv.desc}</div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs sm:text-sm font-semibold text-zinc-200">{srv.name}</span>
+                                {srv.comingSoon && (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/25 shrink-0">
+                                    Coming Soon
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-zinc-500 hidden sm:block truncate mt-0.5">{srv.desc}</div>
                             </div>
                           </div>
-                          {isSelected && <Check size={16} className="text-white shrink-0 ml-2" />}
+                          {isSelected && !srv.comingSoon && <Check size={16} className="text-white shrink-0 ml-2" />}
                         </button>
                       );
                     })}
